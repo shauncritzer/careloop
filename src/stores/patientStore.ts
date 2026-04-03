@@ -59,6 +59,7 @@ interface PatientState {
   fetchPatient: (userId: string) => Promise<void>;
   fetchRecentLogs: (patientId: string, days?: number) => Promise<void>;
   createPatient: (patient: Omit<Patient, 'id'>) => Promise<Patient>;
+  updatePatient: (id: string, updates: Partial<Patient>) => Promise<void>;
   saveDailyLog: (log: Partial<DailyLog> & { patient_id: string; log_date: string }) => Promise<DailyLog>;
   inviteFamily: (email: string) => Promise<void>;
   removeFamily: (accessId: string) => Promise<void>;
@@ -146,6 +147,17 @@ export const usePatientStore = create<PatientState>((set, get) => ({
     if (error) throw error;
     set({ patient: data as Patient, isReadOnly: false });
     return data as Patient;
+  },
+
+  updatePatient: async (id, updates) => {
+    const { data, error } = await supabase
+      .from('patients')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    set({ patient: data as Patient });
   },
 
   saveDailyLog: async (log) => {

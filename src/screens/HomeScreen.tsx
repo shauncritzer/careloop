@@ -78,7 +78,12 @@ export default function HomeScreen() {
             Family Sharing
           </button>
         )}
-        <button className="btn btn-ghost" style={{ marginTop: 24 }} onClick={signOut}>
+        {!isReadOnly && (
+          <button className="btn btn-ghost" onClick={() => navigate('/edit-profile')}>
+            Edit Patient Profile
+          </button>
+        )}
+        <button className="btn btn-ghost" style={{ marginTop: 12 }} onClick={signOut}>
           Sign Out
         </button>
       </div>
