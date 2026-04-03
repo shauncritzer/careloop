@@ -13,8 +13,8 @@ import DoctorSummaryScreen from './screens/DoctorSummaryScreen';
 import FamilySharingScreen from './screens/FamilySharingScreen';
 
 export default function App() {
-  const { session, profile, loading, initialize } = useAuthStore();
-  const { patient, isReadOnly, loading: patientLoading } = usePatientStore();
+  const { session, loading, initialize } = useAuthStore();
+  const { patient, isReadOnly } = usePatientStore();
 
   useEffect(() => {
     initialize();
@@ -37,27 +37,11 @@ export default function App() {
     );
   }
 
-  // Family members who have access via family_access table
-  // should go straight to the home screen (read-only) — not patient setup
-  if (!patient && profile?.role !== 'family') {
+  if (!patient) {
     return (
       <Routes>
         <Route path="*" element={<PatientSetupScreen />} />
       </Routes>
-    );
-  }
-
-  if (!patient && profile?.role === 'family') {
-    return (
-      <div className="page" style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <div style={{ padding: 24, textAlign: 'center' }}>
-          <h2 style={{ color: '#1565C0' }}>Welcome to CareLoop</h2>
-          <p style={{ fontSize: 16, color: '#666', marginTop: 12 }}>
-            A caregiver hasn't shared patient access with you yet.
-            Ask them to invite your email in Family Sharing.
-          </p>
-        </div>
-      </div>
     );
   }
 

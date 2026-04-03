@@ -7,7 +7,6 @@ export default function SignupScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'caregiver' | 'family'>('caregiver');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const signUp = useAuthStore((s) => s.signUp);
@@ -20,7 +19,7 @@ export default function SignupScreen() {
     setLoading(true);
     setError('');
     try {
-      await signUp(email.trim(), password, fullName.trim(), role);
+      await signUp(email.trim(), password, fullName.trim(), 'caregiver');
     } catch (err: any) {
       setError(err.message ?? 'Signup failed. Please try again.');
     } finally {
@@ -32,13 +31,7 @@ export default function SignupScreen() {
     <div className="page">
       <form className="page-content" onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <h1 className="center" style={{ color: '#1565C0', fontSize: 30 }}>Create Account</h1>
-        <p className="center subtitle" style={{ marginBottom: 24 }}>Set up your CareLoop account</p>
-
-        <label className="form-label">I am a...</label>
-        <div className="yesno-buttons" style={{ marginBottom: 12 }}>
-          <button type="button" className={`yesno-btn ${role === 'caregiver' ? 'yes' : ''}`} onClick={() => setRole('caregiver')}>Caregiver</button>
-          <button type="button" className={`yesno-btn ${role === 'family' ? 'yes' : ''}`} onClick={() => setRole('family')}>Family Member</button>
-        </div>
+        <p className="center subtitle" style={{ marginBottom: 36 }}>Set up your CareLoop account</p>
 
         {error && <p style={{ color: '#C62828', textAlign: 'center', marginBottom: 12 }}>{error}</p>}
 
