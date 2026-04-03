@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { usePatientStore } from './stores/patientStore';
@@ -14,21 +14,27 @@ import FamilySharingScreen from './screens/FamilySharingScreen';
 import EditProfileScreen from './screens/EditProfileScreen';
 
 export default function App() {
-  const { session, user, loading, initialize } = useAuthStore();
-  const { patient, isReadOnly, fetchPatient } = usePatientStore();
+  const { session, user, loading: authLoading, initialize } = useAuthStore();
+  const { patient, isReadOnly, loading: patientLoading, fetchPatient } = usePatientStore();
+  const fetchedForUser = useRef<string | null>(null);
 
   useEffect(() => {
     initialize();
   }, []);
 
-  // Fetch patient whenever user changes
+  // Fetch patient once per user — skip if already fetched or patient already set
   useEffect(() => {
-    if (user) {
+    if (user && !patient && fetchedForUser.current !== user.id) {
+      fetchedForUser.current = user.id;
       fetchPatient(user.id);
     }
-  }, [user]);
+    if (!user) {
+      fetchedForUser.current = null;
+    }
+  }, [user, patient]);
 
-  if (loading) {
+  // Show loading during auth init or initial patient fetch
+  if (authLoading || (user && !patient && patientLoading)) {
     return (
       <div className="page" style={{ justifyContent: 'center', alignItems: 'center' }}>
         <p style={{ fontSize: 20, color: '#888' }}>Loading...</p>

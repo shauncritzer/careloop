@@ -75,7 +75,10 @@ export const usePatientStore = create<PatientState>((set, get) => ({
   loading: false,
 
   fetchPatient: async (userId) => {
-    set({ loading: true });
+    // Only show loading if we don't already have a patient
+    if (!get().patient) {
+      set({ loading: true });
+    }
 
     // First, try to find a patient owned by this user (caregiver)
     const { data: ownedPatient } = await supabase
