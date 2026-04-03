@@ -1,119 +1,52 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import BigButton from '../components/BigButton';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DisclaimerFooter from '../components/DisclaimerFooter';
 import { useAuthStore } from '../stores/authStore';
 
-export default function LoginScreen({ navigation }: any) {
+export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const signIn = useAuthStore((s) => s.signIn);
+  const navigate = useNavigate();
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
-      return;
-    }
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) { setError('Please enter your email and password.'); return; }
     setLoading(true);
+    setError('');
     try {
       await signIn(email.trim(), password);
     } catch (err: any) {
-      Alert.alert('Login failed', err.message ?? 'Please try again.');
+      setError(err.message ?? 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>CareLoop</Text>
-        <Text style={styles.subtitle}>Caregiver check-in made simple</Text>
+    <div className="page">
+      <form className="page-content" onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <h1 className="center" style={{ color: '#1565C0' }}>CareLoop</h1>
+        <p className="center subtitle" style={{ marginBottom: 36 }}>Caregiver check-in made simple</p>
 
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+        {error && <p style={{ color: '#C62828', textAlign: 'center', marginBottom: 12 }}>{error}</p>}
 
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Your password"
-          secureTextEntry
-        />
+        <label className="form-label">Email</label>
+        <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
 
-        <BigButton title={loading ? 'Signing in...' : 'Sign In'} onPress={handleLogin} disabled={loading} />
+        <label className="form-label">Password</label>
+        <input className="form-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" autoComplete="current-password" />
 
-        <BigButton
-          title="Create Account"
-          onPress={() => navigation.navigate('Signup')}
-          color="#FFF"
-          textColor="#2196F3"
-          style={{ borderWidth: 2, borderColor: '#2196F3' }}
-        />
-      </ScrollView>
+        <button className="btn btn-primary" type="submit" disabled={loading}>
+          {loading ? 'Signing in...' : 'Sign In'}
+        </button>
+        <button className="btn btn-outline" type="button" onClick={() => navigate('/signup')}>
+          Create Account
+        </button>
+      </form>
       <DisclaimerFooter />
-    </KeyboardAvoidingView>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#FFF' },
-  container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-    paddingBottom: 20,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#1565C0',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 36,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 6,
-    marginTop: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CCC',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 18,
-    backgroundColor: '#FAFAFA',
-    minHeight: 52,
-  },
-});

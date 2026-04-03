@@ -1,142 +1,59 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import BigButton from '../components/BigButton';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DisclaimerFooter from '../components/DisclaimerFooter';
 import { useAuthStore } from '../stores/authStore';
 
-export default function SignupScreen({ navigation }: any) {
+export default function SignupScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const signUp = useAuthStore((s) => s.signUp);
+  const navigate = useNavigate();
 
-  const handleSignup = async () => {
-    if (!fullName || !email || !password) {
-      Alert.alert('Missing fields', 'Please fill in all fields.');
-      return;
-    }
-    if (password.length < 6) {
-      Alert.alert('Weak password', 'Password must be at least 6 characters.');
-      return;
-    }
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fullName || !email || !password) { setError('Please fill in all fields.'); return; }
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
     setLoading(true);
+    setError('');
     try {
       await signUp(email.trim(), password, fullName.trim(), 'caregiver');
-      Alert.alert(
-        'Account created',
-        'Please check your email to confirm your account, then sign in.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      alert('Account created! Please check your email to confirm your account, then sign in.');
+      navigate('/');
     } catch (err: any) {
-      Alert.alert('Signup failed', err.message ?? 'Please try again.');
+      setError(err.message ?? 'Signup failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Set up your caregiver account</Text>
+    <div className="page">
+      <form className="page-content" onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <h1 className="center" style={{ color: '#1565C0', fontSize: 30 }}>Create Account</h1>
+        <p className="center subtitle" style={{ marginBottom: 36 }}>Set up your caregiver account</p>
 
-        <Text style={styles.label}>Full Name</Text>
-        <TextInput
-          style={styles.input}
-          value={fullName}
-          onChangeText={setFullName}
-          placeholder="Your full name"
-          autoCorrect={false}
-        />
+        {error && <p style={{ color: '#C62828', textAlign: 'center', marginBottom: 12 }}>{error}</p>}
 
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+        <label className="form-label">Full Name</label>
+        <input className="form-input" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" />
 
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="At least 6 characters"
-          secureTextEntry
-        />
+        <label className="form-label">Email</label>
+        <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
 
-        <BigButton
-          title={loading ? 'Creating account...' : 'Create Account'}
-          onPress={handleSignup}
-          disabled={loading}
-        />
+        <label className="form-label">Password</label>
+        <input className="form-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" autoComplete="new-password" />
 
-        <BigButton
-          title="Back to Sign In"
-          onPress={() => navigation.goBack()}
-          color="#FFF"
-          textColor="#2196F3"
-          style={{ borderWidth: 2, borderColor: '#2196F3' }}
-        />
-      </ScrollView>
+        <button className="btn btn-primary" type="submit" disabled={loading}>
+          {loading ? 'Creating account...' : 'Create Account'}
+        </button>
+        <button className="btn btn-outline" type="button" onClick={() => navigate('/')}>
+          Back to Sign In
+        </button>
+      </form>
       <DisclaimerFooter />
-    </KeyboardAvoidingView>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#FFF' },
-  container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-    paddingBottom: 20,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#1565C0',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 36,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 6,
-    marginTop: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CCC',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 18,
-    backgroundColor: '#FAFAFA',
-    minHeight: 52,
-  },
-});
