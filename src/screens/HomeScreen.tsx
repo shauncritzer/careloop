@@ -9,7 +9,7 @@ import { evaluateAlerts, Severity } from '../lib/alertEngine';
 export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
-  const { patient, recentLogs, todayLog, fetchPatient } = usePatientStore();
+  const { patient, recentLogs, todayLog, isReadOnly, fetchPatient } = usePatientStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,6 +22,10 @@ export default function HomeScreen() {
 
   let severity: Severity = 'green';
   let messages = ['No check-in recorded yet today. Tap below to start.'];
+
+  if (isReadOnly && !todayLog) {
+    messages = ['No check-in recorded yet today.'];
+  }
 
   if (todayLog && patient) {
     const yesterdayLog = recentLogs.find((l) => {
@@ -52,18 +56,28 @@ export default function HomeScreen() {
       <div className="page-content">
         <h1 className="center">{patient?.name ?? 'Loading...'}</h1>
         <p className="center subtitle">{today}</p>
+        {isReadOnly && (
+          <p className="center" style={{ fontSize: 14, color: '#1565C0', marginTop: 4 }}>Family View (read-only)</p>
+        )}
 
         <StatusCard severity={severity} messages={messages} />
 
-        <button className="btn btn-blue" style={{ marginTop: 20 }} onClick={() => navigate('/checkin')}>
-          {todayLog ? "Update Today's Check-In" : "Start Today's Check-In"}
-        </button>
+        {!isReadOnly && (
+          <button className="btn btn-blue" style={{ marginTop: 20 }} onClick={() => navigate('/checkin')}>
+            {todayLog ? "Update Today's Check-In" : "Start Today's Check-In"}
+          </button>
+        )}
         <button className="btn btn-teal" onClick={() => navigate('/trends')}>
           View 7-Day Trends
         </button>
         <button className="btn btn-purple" onClick={() => navigate('/summary')}>
           Generate Doctor Summary
         </button>
+        {!isReadOnly && (
+          <button className="btn btn-outline" onClick={() => navigate('/family')}>
+            Family Sharing
+          </button>
+        )}
         <button className="btn btn-ghost" style={{ marginTop: 24 }} onClick={signOut}>
           Sign Out
         </button>

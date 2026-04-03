@@ -29,7 +29,7 @@ export default function PatientSetupScreen() {
       await createPatient({
         owner_user_id: user.id,
         name: name.trim(),
-        date_of_birth: dob || null,
+        date_of_birth: dob ? dob.replace(/^(\d{2})-(\d{2})-(\d{4})$/, '$3-$1-$2') : null,
         baseline_weight_lbs: weight ? parseFloat(weight) : null,
         baseline_sys_bp: sysBp ? parseInt(sysBp) : null,
         baseline_dia_bp: diaBp ? parseInt(diaBp) : null,
@@ -61,7 +61,7 @@ export default function PatientSetupScreen() {
         {error && <p style={{ color: '#C62828', textAlign: 'center', marginBottom: 12 }}>{error}</p>}
 
         {field('Patient Name *', name, setName, 'Full name')}
-        {field('Date of Birth', dob, setDob, 'YYYY-MM-DD')}
+        {field('Date of Birth', dob, setDob, 'MM-DD-YYYY')}
         {field('Baseline Weight (lbs)', weight, setWeight, 'e.g. 185', 'number')}
         {field('Baseline Systolic BP', sysBp, setSysBp, 'e.g. 130', 'number')}
         {field('Baseline Diastolic BP', diaBp, setDiaBp, 'e.g. 80', 'number')}
