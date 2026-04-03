@@ -38,9 +38,11 @@ export default function PatientSetupScreen() {
         caregiver_name: caregiverName || null,
         family_contact_name: familyContact || null,
       });
+      // Hard redirect to force clean re-render with patient in Supabase
+      window.location.href = '/';
+      return;
     } catch (err: any) {
       setError(err.message ?? 'Could not save patient profile.');
-    } finally {
       setLoading(false);
     }
   };

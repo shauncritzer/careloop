@@ -148,7 +148,8 @@ export const usePatientStore = create<PatientState>((set, get) => ({
       .select()
       .single();
     if (error) throw error;
-    set({ patient: data as Patient, isReadOnly: false });
+    // Set state synchronously — do not await anything after this
+    set({ patient: data as Patient, isReadOnly: false, loading: false });
     return data as Patient;
   },
 
