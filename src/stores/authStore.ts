@@ -11,43 +11,13 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string, role: string) => Promise<void>;
   signOut: () => Promise<void>;
-  ensureProfile: (user: User, fullName?: string, role?: string) => Promise<{ full_name: string; role: string } | null>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   session: null,
   user: null,
   profile: null,
   loading: true,
-
-  ensureProfile: async (user, fullName?, role?) => {
-    // Try to fetch existing profile
-    const { data: existing } = await supabase
-      .from('users')
-      .select('full_name, role')
-      .eq('id', user.id)
-      .single();
-
-    if (existing) return existing;
-
-    // Profile doesn't exist yet — create it
-    // This happens after email confirmation when the session is active
-    if (fullName) {
-      const { data: created, error } = await supabase
-        .from('users')
-        .insert({
-          id: user.id,
-          email: user.email!,
-          full_name: fullName,
-          role: role ?? 'caregiver',
-        })
-        .select('full_name, role')
-        .single();
-      if (!error && created) return created;
-    }
-
-    return null;
-  },
 
   initialize: async () => {
     const { data } = await supabase.auth.getSession();
@@ -56,29 +26,58 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     let profile = null;
     if (user) {
-      profile = await get().ensureProfile(user);
+      const { data: p } = await supabase
+        .from('users')
+        .select('full_name, role')
+        .eq('id', user.id)
+        .single();
+      profile = p;
     }
 
     set({ session, user, profile, loading: false });
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
       const user = session?.user ?? null;
       let profile = null;
+
       if (user) {
-        // Check for pending signup data in localStorage
-        const pendingName = localStorage.getItem('careloop_pending_name');
-        const pendingRole = localStorage.getItem('careloop_pending_role');
-        profile = await get().ensureProfile(
-          user,
-          pendingName ?? undefined,
-          pendingRole ?? undefined
-        );
-        if (profile && pendingName) {
-          localStorage.removeItem('careloop_pending_name');
-          localStorage.removeItem('careloop_pending_role');
+        const { data: p } = await supabase
+          .from('users')
+          .select('full_name, role')
+          .eq('id', user.id)
+          .single();
+        profile = p;
+
+        // If profile doesn't exist yet (just signed up), create it
+        if (!p) {
+          const pendingName = localStorage.getItem('careloop_pending_name');
+          const pendingRole = localStorage.getItem('careloop_pending_role');
+          if (pendingName) {
+            const { data: created } = await supabase
+              .from('users')
+              .insert({
+                id: user.id,
+                email: user.email!,
+                full_name: pendingName,
+                role: pendingRole ?? 'caregiver',
+              })
+              .select('full_name, role')
+              .single();
+            if (created) {
+              profile = created;
+              localStorage.removeItem('careloop_pending_name');
+              localStorage.removeItem('careloop_pending_role');
+            }
+          }
         }
       }
+
       set({ session, user, profile });
+
+      // On sign out, clear everything
+      if (event === 'SIGNED_OUT') {
+        set({ session: null, user: null, profile: null });
+      }
     });
   },
 
@@ -88,27 +87,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signUp: async (email, password, fullName, role) => {
-    // Store the profile data for after email confirmation
     localStorage.setItem('careloop_pending_name', fullName);
     localStorage.setItem('careloop_pending_role', role);
 
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: { full_name: fullName, role },
-      },
+      options: { data: { full_name: fullName, role } },
     });
     if (error) throw error;
 
-    // If Supabase auto-confirms (no email confirmation required),
-    // the session is immediately available — create profile now
+    // Auto-confirmed: session available immediately
     if (data.session && data.user) {
-      const profile = await get().ensureProfile(data.user, fullName, role);
-      if (profile) {
-        localStorage.removeItem('careloop_pending_name');
-        localStorage.removeItem('careloop_pending_role');
-      }
+      const { data: profile } = await supabase
+        .from('users')
+        .upsert({
+          id: data.user.id,
+          email: data.user.email!,
+          full_name: fullName,
+          role,
+        }, { onConflict: 'id' })
+        .select('full_name, role')
+        .single();
+
+      localStorage.removeItem('careloop_pending_name');
+      localStorage.removeItem('careloop_pending_role');
       set({ session: data.session, user: data.user, profile });
     }
   },
@@ -116,5 +119,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     await supabase.auth.signOut();
     set({ session: null, user: null, profile: null });
+    // Also clear patient store
+    const { usePatientStore } = await import('./patientStore');
+    usePatientStore.setState({ patient: null, recentLogs: [], todayLog: null, isReadOnly: false, familyMembers: [] });
   },
 }));

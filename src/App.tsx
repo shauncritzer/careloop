@@ -11,14 +11,22 @@ import DailyCheckInScreen from './screens/DailyCheckInScreen';
 import TrendsScreen from './screens/TrendsScreen';
 import DoctorSummaryScreen from './screens/DoctorSummaryScreen';
 import FamilySharingScreen from './screens/FamilySharingScreen';
+import EditProfileScreen from './screens/EditProfileScreen';
 
 export default function App() {
-  const { session, loading, initialize } = useAuthStore();
-  const { patient, isReadOnly } = usePatientStore();
+  const { session, user, loading, initialize } = useAuthStore();
+  const { patient, isReadOnly, fetchPatient } = usePatientStore();
 
   useEffect(() => {
     initialize();
   }, []);
+
+  // Fetch patient whenever user changes
+  useEffect(() => {
+    if (user) {
+      fetchPatient(user.id);
+    }
+  }, [user]);
 
   if (loading) {
     return (
@@ -52,6 +60,7 @@ export default function App() {
       <Route path="/trends" element={<TrendsScreen />} />
       <Route path="/summary" element={<DoctorSummaryScreen />} />
       {!isReadOnly && <Route path="/family" element={<FamilySharingScreen />} />}
+      {!isReadOnly && <Route path="/edit-profile" element={<EditProfileScreen />} />}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
