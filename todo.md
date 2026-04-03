@@ -16,3 +16,5 @@
 - [x] Add medical disclaimer footer on every screen
 - [x] Ensure minimum 48x48px touch targets and 16px+ body font
 - [x] Write vitest tests for alert engine and key procedures
+- [x] Fix signup "User already registered" error — improve error message and add "try signing in" link
+- [x] Handle Supabase auth edge case where user exists but hasn't confirmed email

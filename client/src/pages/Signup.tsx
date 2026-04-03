@@ -14,6 +14,7 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { signUp } = useSupabaseAuth();
@@ -22,6 +23,7 @@ export default function Signup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsAlreadyRegistered(false);
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -36,7 +38,11 @@ export default function Signup() {
     setSubmitting(true);
     const { error } = await signUp(email, password, fullName);
     if (error) {
-      setError(error);
+      if (error === 'ALREADY_REGISTERED') {
+        setIsAlreadyRegistered(true);
+      } else {
+        setError(error);
+      }
     } else {
       setSuccess(true);
     }
@@ -96,9 +102,31 @@ export default function Signup() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-5">
-                {error && (
+                {/* Generic error */}
+                {error && !isAlreadyRegistered && (
                   <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
                     {error}
+                  </div>
+                )}
+
+                {/* Already registered — special message with sign-in link */}
+                {isAlreadyRegistered && (
+                  <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 space-y-2">
+                    <p className="text-amber-800 font-medium text-sm">
+                      An account with this email already exists.
+                    </p>
+                    <p className="text-amber-700 text-sm">
+                      This may be from a previous setup. You can try signing in with your password, or use a different email address.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLocation('/login')}
+                      className="mt-1 border-amber-300 text-amber-800 hover:bg-amber-100"
+                    >
+                      Go to Sign In
+                    </Button>
                   </div>
                 )}
 
@@ -122,7 +150,7 @@ export default function Signup() {
                     type="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); setIsAlreadyRegistered(false); }}
                     required
                     className="h-12 text-base"
                   />

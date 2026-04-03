@@ -35,20 +35,34 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName },
       },
     });
-    if (error) return { error: error.message };
 
-    // Also insert into users table
-    const { data: { user: newUser } } = await supabase.auth.getUser();
-    if (newUser) {
+    if (error) {
+      // Provide friendlier error messages
+      const msg = error.message.toLowerCase();
+      if (msg.includes('already registered') || msg.includes('already exists')) {
+        return { error: 'ALREADY_REGISTERED' };
+      }
+      return { error: error.message };
+    }
+
+    // Supabase returns a user with fake/empty identities when the email
+    // is already registered and "Confirm email" is enabled.
+    // Detect this: user exists but identities array is empty.
+    if (data?.user && data.user.identities && data.user.identities.length === 0) {
+      return { error: 'ALREADY_REGISTERED' };
+    }
+
+    // If we got a session back, the user is auto-confirmed — insert into users table
+    if (data?.session && data?.user) {
       await supabase.from('users').upsert({
-        id: newUser.id,
+        id: data.user.id,
         email,
         full_name: fullName,
         role: 'caregiver',
@@ -60,7 +74,16 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
 
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('invalid login credentials')) {
+        return { error: 'Invalid email or password. Please check your credentials and try again.' };
+      }
+      if (msg.includes('email not confirmed')) {
+        return { error: 'Please check your email and click the confirmation link before signing in.' };
+      }
+      return { error: error.message };
+    }
     return { error: null };
   }, []);
 
