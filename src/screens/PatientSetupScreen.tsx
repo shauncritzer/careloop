@@ -1,15 +1,4 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import BigButton from '../components/BigButton';
+import { useState } from 'react';
 import DisclaimerFooter from '../components/DisclaimerFooter';
 import { useAuthStore } from '../stores/authStore';
 import { usePatientStore } from '../stores/patientStore';
@@ -28,15 +17,14 @@ export default function PatientSetupScreen() {
   const [caregiverName, setCaregiverName] = useState('');
   const [familyContact, setFamilyContact] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSave = async () => {
-    if (!name.trim()) {
-      Alert.alert('Required', 'Please enter the patient name.');
-      return;
-    }
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) { setError('Please enter the patient name.'); return; }
     if (!user) return;
-
     setLoading(true);
+    setError('');
     try {
       await createPatient({
         owner_user_id: user.id,
@@ -51,92 +39,42 @@ export default function PatientSetupScreen() {
         family_contact_name: familyContact || null,
       });
     } catch (err: any) {
-      Alert.alert('Error', err.message ?? 'Could not save patient profile.');
+      setError(err.message ?? 'Could not save patient profile.');
     } finally {
       setLoading(false);
     }
   };
 
-  const field = (label: string, value: string, setter: (v: string) => void, opts?: {
-    placeholder?: string;
-    keyboard?: 'numeric' | 'default';
-  }) => (
-    <View key={label}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={setter}
-        placeholder={opts?.placeholder ?? ''}
-        keyboardType={opts?.keyboard ?? 'default'}
-      />
-    </View>
+  const field = (label: string, value: string, setter: (v: string) => void, placeholder: string, type = 'text') => (
+    <>
+      <label className="form-label">{label}</label>
+      <input className="form-input" type={type} inputMode={type === 'number' ? 'numeric' : undefined} value={value} onChange={(e) => setter(e.target.value)} placeholder={placeholder} />
+    </>
   );
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Patient Profile</Text>
-        <Text style={styles.subtitle}>
-          Enter baseline information. You can update these later.
-        </Text>
+    <div className="page">
+      <form className="page-content" onSubmit={handleSave}>
+        <h1 className="center" style={{ color: '#1565C0', fontSize: 28 }}>Patient Profile</h1>
+        <p className="center subtitle" style={{ marginBottom: 24 }}>Enter baseline information. You can update these later.</p>
 
-        {field('Patient Name *', name, setName, { placeholder: 'Full name' })}
-        {field('Date of Birth', dob, setDob, { placeholder: 'YYYY-MM-DD' })}
-        {field('Baseline Weight (lbs)', weight, setWeight, { placeholder: 'e.g. 185', keyboard: 'numeric' })}
-        {field('Baseline Systolic BP', sysBp, setSysBp, { placeholder: 'e.g. 130', keyboard: 'numeric' })}
-        {field('Baseline Diastolic BP', diaBp, setDiaBp, { placeholder: 'e.g. 80', keyboard: 'numeric' })}
-        {field('Baseline Pulse', pulse, setPulse, { placeholder: 'e.g. 72', keyboard: 'numeric' })}
-        {field('Baseline SpO2 (%)', spo2, setSpo2, { placeholder: 'e.g. 96', keyboard: 'numeric' })}
-        {field('Caregiver Name', caregiverName, setCaregiverName, { placeholder: 'Your name' })}
-        {field('Family Contact Name', familyContact, setFamilyContact, { placeholder: 'e.g. Son, Daughter' })}
+        {error && <p style={{ color: '#C62828', textAlign: 'center', marginBottom: 12 }}>{error}</p>}
 
-        <BigButton
-          title={loading ? 'Saving...' : 'Save & Continue'}
-          onPress={handleSave}
-          disabled={loading}
-          color="#4CAF50"
-        />
-      </ScrollView>
+        {field('Patient Name *', name, setName, 'Full name')}
+        {field('Date of Birth', dob, setDob, 'YYYY-MM-DD')}
+        {field('Baseline Weight (lbs)', weight, setWeight, 'e.g. 185', 'number')}
+        {field('Baseline Systolic BP', sysBp, setSysBp, 'e.g. 130', 'number')}
+        {field('Baseline Diastolic BP', diaBp, setDiaBp, 'e.g. 80', 'number')}
+        {field('Baseline Pulse', pulse, setPulse, 'e.g. 72', 'number')}
+        {field('Baseline SpO2 (%)', spo2, setSpo2, 'e.g. 96', 'number')}
+        {field('Caregiver Name', caregiverName, setCaregiverName, 'Your name')}
+        {field('Family Contact Name', familyContact, setFamilyContact, 'e.g. Son, Daughter')}
+
+        <button className="btn btn-green" type="submit" disabled={loading} style={{ marginTop: 20 }}>
+          {loading ? 'Saving...' : 'Save & Continue'}
+        </button>
+      </form>
       <DisclaimerFooter />
-    </KeyboardAvoidingView>
+    </div>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#FFF' },
-  container: { paddingHorizontal: 28, paddingVertical: 20 },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1565C0',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 6,
-    marginTop: 14,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#CCC',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 18,
-    backgroundColor: '#FAFAFA',
-    minHeight: 52,
-  },
-});
