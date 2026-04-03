@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { usePatientStore } from './stores/patientStore';
@@ -15,23 +15,17 @@ import EditProfileScreen from './screens/EditProfileScreen';
 
 export default function App() {
   const { session, user, loading: authLoading, initialize } = useAuthStore();
-  const { patient, isReadOnly, loading: patientLoading, fetchPatient } = usePatientStore();
-  const fetchedForUser = useRef<string | null>(null);
+  const { patient, isReadOnly, loading: patientLoading } = usePatientStore();
 
+  // Initialize auth + fetch patient once on app load
   useEffect(() => {
-    initialize();
+    initialize().then(() => {
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        usePatientStore.getState().fetchPatient(currentUser.id);
+      }
+    });
   }, []);
-
-  // Fetch patient once per user — skip if already fetched or patient already set
-  useEffect(() => {
-    if (user && !patient && fetchedForUser.current !== user.id) {
-      fetchedForUser.current = user.id;
-      fetchPatient(user.id);
-    }
-    if (!user) {
-      fetchedForUser.current = null;
-    }
-  }, [user, patient]);
 
   // Show loading during auth init or initial patient fetch
   if (authLoading || (user && !patient && patientLoading)) {
