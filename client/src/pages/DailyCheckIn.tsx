@@ -1,490 +1,538 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { usePatient, useDailyLogs, useSaveDailyLog, useSaveAlert, getHistoricalData, getPatientBaseline } from '@/hooks/useSupabaseData';
-import { useAlertNotification } from '@/hooks/useAlertNotification';
-import { evaluateAlerts, getSeverityLabel, getSeverityColor } from '@/lib/alertEngine';
-import type { DailyLogInput, AlertResult } from '@/lib/alertEngine';
+import { usePatient, useDailyLogs, useSaveDailyLog, useSaveAlert, getBaselineData, logToCheckInData } from '@/hooks/useSupabaseData';
+import { evaluateCheckIn, getSeverityLabel, getSeverityColor } from '@/lib/alertEngine';
+import type { Severity, CheckInData } from '@/lib/alertEngine';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, ArrowRight, Check, Loader2, AlertTriangle, CheckCircle2, XCircle, Weight, Heart, Wind, Pill, FileText, Activity } from 'lucide-react';
+import {
+  ArrowLeft, ArrowRight, Loader2, Scale, Heart, Activity,
+  Droplets, AlertTriangle, CheckCircle2, XCircle, Stethoscope,
+  Utensils, Moon, Wind, Brain, Pill, ChevronRight
+} from 'lucide-react';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import { toast } from 'sonner';
 
-const TOTAL_STEPS = 7;
+interface FormData {
+  weight_lbs: string;
+  systolic_bp: string;
+  diastolic_bp: string;
+  pulse_bpm: string;
+  spo2: string;
+  fluid_intake_oz: string;
+  sodium_mg: string;
+  breathing_worse: boolean;
+  swelling: boolean;
+  confusion: boolean;
+  dizziness: boolean;
+  chest_pain: boolean;
+  missed_meds: boolean;
+  fall_or_near_fall: boolean;
+  poor_appetite: boolean;
+  poor_sleep: boolean;
+  notes: string;
+}
 
-const symptomButtons = [
-  { key: 'breathing_worse', label: 'Breathing Worse', icon: Wind },
-  { key: 'mild_confusion', label: 'Mild Confusion', icon: Activity },
-  { key: 'severe_confusion', label: 'Severe Confusion', icon: AlertTriangle },
-  { key: 'stomach_pain_bent_over', label: 'Stomach Pain / Bent Over', icon: Activity },
-  { key: 'swelling', label: 'Swelling', icon: Activity },
-  { key: 'poor_sleep', label: 'Poor Sleep', icon: Activity },
-  { key: 'weak_exhausted', label: 'Weak / Exhausted', icon: Activity },
-  { key: 'poor_appetite', label: 'Poor Appetite', icon: Activity },
-  { key: 'cough_worse', label: 'Cough Worse', icon: Wind },
-  { key: 'fall_or_near_fall', label: 'Fall or Near Fall', icon: AlertTriangle },
-] as const;
+const defaultForm: FormData = {
+  weight_lbs: '', systolic_bp: '', diastolic_bp: '', pulse_bpm: '', spo2: '',
+  fluid_intake_oz: '', sodium_mg: '',
+  breathing_worse: false, swelling: false, confusion: false, dizziness: false,
+  chest_pain: false, missed_meds: false, fall_or_near_fall: false,
+  poor_appetite: false, poor_sleep: false, notes: '',
+};
+
+function SymptomToggle({ label, icon: Icon, checked, onChange }: {
+  label: string; icon: React.ElementType; checked: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all min-h-[56px] w-full text-left ${
+        checked
+          ? 'border-amber-400 bg-amber-50 text-amber-800'
+          : 'border-border bg-card text-foreground hover:border-muted-foreground/30'
+      }`}
+    >
+      <Icon className={`w-5 h-5 shrink-0 ${checked ? 'text-amber-600' : 'text-muted-foreground'}`} />
+      <span className="text-base font-medium flex-1">{label}</span>
+      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+        checked ? 'border-amber-500 bg-amber-500' : 'border-muted-foreground/30'
+      }`}>
+        {checked && <CheckCircle2 className="w-4 h-4 text-white" />}
+      </div>
+    </button>
+  );
+}
 
 export default function DailyCheckIn() {
   const [, setLocation] = useLocation();
   const { patient, loading: patientLoading } = usePatient();
-  const { logs } = useDailyLogs(patient?.id, 8);
+  const { logs } = useDailyLogs(patient?.id, 7);
   const { saveDailyLog } = useSaveDailyLog();
   const { saveAlert } = useSaveAlert();
-  const { notifyOnAlert } = useAlertNotification();
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState<FormData>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
-  const [alertResult, setAlertResult] = useState<AlertResult | null>(null);
+  const [result, setResult] = useState<{ severity: Severity; messages: string[]; recommendations: string[] } | null>(null);
 
-  const [form, setForm] = useState<DailyLogInput & { med_note: string; general_note: string }>({
-    weight_lbs: null,
-    systolic_bp: null,
-    diastolic_bp: null,
-    pulse_bpm: null,
-    spo2: null,
-    breathing_worse: false,
-    mild_confusion: false,
-    severe_confusion: false,
-    stomach_pain_bent_over: false,
-    swelling: false,
-    poor_sleep: false,
-    weak_exhausted: false,
-    poor_appetite: false,
-    cough_worse: false,
-    fall_or_near_fall: false,
-    lasix_taken: true,
-    all_meds_taken: true,
-    ambien_taken_last_night: false,
-    med_note: '',
-    general_note: '',
-  });
+  const updateField = useCallback((field: keyof FormData, value: string | boolean) => {
+    setForm((prev: FormData) => ({ ...prev, [field]: value }));
+  }, []);
 
-  const updateNumeric = (field: string, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value === '' ? null : parseFloat(value) }));
-  };
+  const steps = [
+    { title: 'Vitals', subtitle: 'Weight, blood pressure, pulse, oxygen' },
+    { title: 'How are they feeling?', subtitle: 'Symptoms to watch for' },
+    { title: 'Medications', subtitle: 'Were all meds taken today?' },
+    { title: 'Fluid & Sodium', subtitle: 'Tracking intake limits' },
+    { title: 'Notes', subtitle: 'Anything else to record' },
+  ];
 
-  const toggleBool = (field: string) => {
-    setForm(prev => ({ ...prev, [field]: !(prev as any)[field] }));
-  };
+  const canProceed = useMemo(() => {
+    if (step === 0) return form.weight_lbs.trim() !== '';
+    return true;
+  }, [step, form.weight_lbs]);
 
   const handleSubmit = async () => {
     if (!patient) return;
     setSubmitting(true);
 
-    const historicalData = getHistoricalData(logs);
-    const baseline = getPatientBaseline(patient);
-    const result = evaluateAlerts(form, baseline, historicalData);
-    setAlertResult(result);
-
-    // Save daily log
-    const { data: savedLog, error } = await saveDailyLog({
+    const logData = {
       patient_id: patient.id,
-      ...form,
-    });
+      weight_lbs: form.weight_lbs ? parseFloat(form.weight_lbs) : null,
+      systolic_bp: form.systolic_bp ? parseInt(form.systolic_bp) : null,
+      diastolic_bp: form.diastolic_bp ? parseInt(form.diastolic_bp) : null,
+      pulse_bpm: form.pulse_bpm ? parseInt(form.pulse_bpm) : null,
+      spo2: form.spo2 ? parseInt(form.spo2) : null,
+      fluid_intake_oz: form.fluid_intake_oz ? parseFloat(form.fluid_intake_oz) : null,
+      sodium_mg: form.sodium_mg ? parseInt(form.sodium_mg) : null,
+      breathing_worse: form.breathing_worse,
+      swelling: form.swelling,
+      confusion: form.confusion,
+      dizziness: form.dizziness,
+      chest_pain: form.chest_pain,
+      missed_meds: form.missed_meds,
+      fall_or_near_fall: form.fall_or_near_fall,
+      poor_appetite: form.poor_appetite,
+      poor_sleep: form.poor_sleep,
+      notes: form.notes || null,
+    };
 
+    const { error } = await saveDailyLog(logData);
     if (error) {
       toast.error('Failed to save check-in: ' + error);
       setSubmitting(false);
       return;
     }
 
-    // Save alert
-    if (savedLog) {
-      await saveAlert({
-        patient_id: patient.id,
-        daily_log_id: savedLog.id,
-        severity: result.severity,
-        message: result.messages.join(' | '),
-      });
+    // Run alert engine
+    const checkInData: CheckInData = {
+      weight_lbs: logData.weight_lbs,
+      systolic_bp: logData.systolic_bp,
+      diastolic_bp: logData.diastolic_bp,
+      pulse_bpm: logData.pulse_bpm,
+      spo2: logData.spo2,
+      fluid_intake_oz: logData.fluid_intake_oz,
+      sodium_mg: logData.sodium_mg,
+      breathing_worse: logData.breathing_worse,
+      swelling: logData.swelling,
+      confusion: logData.confusion,
+      dizziness: logData.dizziness,
+      chest_pain: logData.chest_pain,
+      missed_meds: logData.missed_meds,
+      fall_or_near_fall: logData.fall_or_near_fall,
+      poor_appetite: logData.poor_appetite,
+      poor_sleep: logData.poor_sleep,
+      notes: logData.notes,
+    };
 
-      // Send automated notifications for concerning patterns
-      await notifyOnAlert(patient.name, result, patient.id);
-    }
+    const previousCheckIns = logs.map(logToCheckInData);
+    const baseline = getBaselineData(patient);
+    const alertResult = evaluateCheckIn(checkInData, baseline, previousCheckIns);
 
-    setStep(7);
+    await saveAlert(patient.id, alertResult.severity, alertResult.messages, alertResult.recommendations);
+
+    setResult(alertResult);
+    setStep(steps.length);
     setSubmitting(false);
-  };
-
-  const canAdvance = () => {
-    switch (step) {
-      case 1: return form.weight_lbs != null;
-      case 2: return form.systolic_bp != null && form.diastolic_bp != null && form.pulse_bpm != null;
-      case 3: return form.spo2 != null;
-      default: return true;
-    }
-  };
-
-  const nextStep = () => {
-    if (step === 6) {
-      handleSubmit();
-    } else if (step < TOTAL_STEPS) {
-      setStep(step + 1);
-    }
-  };
-
-  const prevStep = () => {
-    if (step > 1) setStep(step - 1);
   };
 
   if (patientLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!patient) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4">
-        <Card className="max-w-md w-full shadow-sm">
-          <CardContent className="pt-8 pb-8 text-center space-y-4">
-            <h2 className="text-xl font-serif font-semibold">No Patient Profile</h2>
-            <p className="text-muted-foreground">Please set up a patient profile first.</p>
-            <Button onClick={() => setLocation('/patient-profile')} className="h-12 text-base">
-              Set Up Profile
-            </Button>
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <Card className="max-w-md w-full shadow-lg">
+          <CardContent className="py-10 text-center space-y-4">
+            <p className="text-lg text-muted-foreground">Please set up a patient profile first.</p>
+            <Button onClick={() => setLocation('/patient-profile')}>Set Up Profile</Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <div className="flex-1 container max-w-lg py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => step === 7 ? setLocation('/') : (step > 1 ? prevStep() : setLocation('/'))}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground min-h-[48px]"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-base">{step === 7 ? 'Home' : step > 1 ? 'Back' : 'Cancel'}</span>
-          </button>
-          {step < 7 && (
-            <span className="text-sm text-muted-foreground font-medium">
-              Step {step} of 6
-            </span>
-          )}
-        </div>
-
-        {/* Progress bar */}
-        {step < 7 && (
-          <div className="w-full h-2 bg-muted rounded-full mb-8 overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-300"
-              style={{ width: `${(step / 6) * 100}%` }}
-            />
+  // Result screen
+  if (result) {
+    const colors = getSeverityColor(result.severity);
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <div className="flex-1 container max-w-lg py-8 space-y-6">
+          <div className="text-center space-y-4">
+            <div className={`inline-flex items-center justify-center w-20 h-20 rounded-2xl ${
+              result.severity === 'red' ? 'bg-red-100' :
+              result.severity === 'yellow' ? 'bg-amber-100' : 'bg-emerald-100'
+            }`}>
+              {result.severity === 'red' && <XCircle className="w-10 h-10 text-red-600" />}
+              {result.severity === 'yellow' && <AlertTriangle className="w-10 h-10 text-amber-600" />}
+              {result.severity === 'green' && <CheckCircle2 className="w-10 h-10 text-emerald-600" />}
+            </div>
+            <h1 className={`text-2xl font-serif font-semibold ${colors.text}`}>
+              {getSeverityLabel(result.severity)}
+            </h1>
           </div>
-        )}
 
-        {/* Step 1: Weight */}
-        {step === 1 && (
-          <Card className="shadow-sm">
-            <CardHeader className="text-center pb-2">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-3">
-                <Weight className="w-7 h-7 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-serif">Weight</CardTitle>
-              <p className="text-muted-foreground text-base mt-1">{today}</p>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label className="text-base font-medium">Today's Weight (lbs)</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  value={form.weight_lbs ?? ''}
-                  onChange={(e) => updateNumeric('weight_lbs', e.target.value)}
-                  placeholder="e.g. 187"
-                  className="h-14 text-xl text-center font-semibold"
-                  autoFocus
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 2: BP + Pulse */}
-        {step === 2 && (
-          <Card className="shadow-sm">
-            <CardHeader className="text-center pb-2">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-3">
-                <Heart className="w-7 h-7 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-serif">Blood Pressure & Pulse</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-base font-medium">Systolic</Label>
-                  <Input
-                    type="number"
-                    value={form.systolic_bp ?? ''}
-                    onChange={(e) => updateNumeric('systolic_bp', e.target.value)}
-                    placeholder="e.g. 130"
-                    className="h-14 text-xl text-center font-semibold"
-                    autoFocus
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-base font-medium">Diastolic</Label>
-                  <Input
-                    type="number"
-                    value={form.diastolic_bp ?? ''}
-                    onChange={(e) => updateNumeric('diastolic_bp', e.target.value)}
-                    placeholder="e.g. 80"
-                    className="h-14 text-xl text-center font-semibold"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-base font-medium">Pulse (bpm)</Label>
-                <Input
-                  type="number"
-                  value={form.pulse_bpm ?? ''}
-                  onChange={(e) => updateNumeric('pulse_bpm', e.target.value)}
-                  placeholder="e.g. 72"
-                  className="h-14 text-xl text-center font-semibold"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 3: SpO2 */}
-        {step === 3 && (
-          <Card className="shadow-sm">
-            <CardHeader className="text-center pb-2">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-3">
-                <Wind className="w-7 h-7 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-serif">Oxygen Level</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label className="text-base font-medium">SpO2 (%)</Label>
-                <Input
-                  type="number"
-                  value={form.spo2 ?? ''}
-                  onChange={(e) => updateNumeric('spo2', e.target.value)}
-                  placeholder="e.g. 96"
-                  className="h-14 text-xl text-center font-semibold"
-                  autoFocus
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 4: Symptoms */}
-        {step === 4 && (
-          <Card className="shadow-sm">
-            <CardHeader className="text-center pb-2">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-3">
-                <Activity className="w-7 h-7 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-serif">Symptoms</CardTitle>
-              <p className="text-muted-foreground text-base mt-1">Tap any that apply today</p>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-1 gap-3">
-                {symptomButtons.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => toggleBool(key)}
-                    className={`w-full min-h-[56px] px-4 py-3 rounded-xl text-left text-base font-medium transition-all border-2 ${
-                      (form as any)[key]
-                        ? 'bg-primary/10 border-primary text-primary'
-                        : 'bg-card border-border text-foreground hover:border-primary/30'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{label}</span>
-                      {(form as any)[key] && <Check className="w-5 h-5" />}
-                    </div>
-                  </button>
+          <Card className={`shadow-lg border-2 ${colors.border} ${colors.bg}`}>
+            <CardContent className="py-5">
+              <div className="space-y-3">
+                {result.messages.map((msg, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${colors.dot}`} />
+                    <p className={`text-base ${colors.text}`}>{msg}</p>
+                  </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Step 5: Medications */}
-        {step === 5 && (
-          <Card className="shadow-sm">
-            <CardHeader className="text-center pb-2">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-3">
-                <Pill className="w-7 h-7 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-serif">Medications</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              {[
-                { key: 'lasix_taken', label: 'Lasix taken today?' },
-                { key: 'all_meds_taken', label: 'All medications taken?' },
-                { key: 'ambien_taken_last_night', label: 'Ambien taken last night?' },
-              ].map(({ key, label }) => (
-                <div key={key} className="flex items-center justify-between p-4 rounded-xl border-2 border-border">
-                  <span className="text-base font-medium">{label}</span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setForm(prev => ({ ...prev, [key]: true }))}
-                      className={`min-w-[64px] min-h-[48px] px-4 py-2 rounded-lg text-base font-semibold transition-all ${
-                        (form as any)[key]
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                      }`}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setForm(prev => ({ ...prev, [key]: false }))}
-                      className={`min-w-[64px] min-h-[48px] px-4 py-2 rounded-lg text-base font-semibold transition-all ${
-                        !(form as any)[key]
-                          ? 'bg-destructive text-destructive-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                      }`}
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <div className="space-y-2 pt-2">
-                <Label className="text-base font-medium">Medication Note (optional)</Label>
-                <Textarea
-                  value={form.med_note}
-                  onChange={(e) => setForm(prev => ({ ...prev, med_note: e.target.value }))}
-                  placeholder="Any notes about medications..."
-                  className="text-base min-h-[80px]"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 6: General Note */}
-        {step === 6 && (
-          <Card className="shadow-sm">
-            <CardHeader className="text-center pb-2">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-3">
-                <FileText className="w-7 h-7 text-primary" />
-              </div>
-              <CardTitle className="text-2xl font-serif">General Notes</CardTitle>
-              <p className="text-muted-foreground text-base mt-1">Any other observations today</p>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <Textarea
-                value={form.general_note}
-                onChange={(e) => setForm(prev => ({ ...prev, general_note: e.target.value }))}
-                placeholder="How is the patient feeling overall? Any changes in behavior, mood, or daily activities..."
-                className="text-base min-h-[160px]"
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 7: Result */}
-        {step === 7 && alertResult && (
-          <div className="space-y-6">
-            <Card className={`shadow-lg border-2 ${
-              alertResult.severity === 'red' ? 'border-red-300' :
-              alertResult.severity === 'yellow' ? 'border-amber-300' :
-              'border-emerald-300'
-            }`}>
-              <CardContent className="pt-8 pb-8 text-center space-y-4">
-                <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${
-                  alertResult.severity === 'red' ? 'bg-red-100' :
-                  alertResult.severity === 'yellow' ? 'bg-amber-100' :
-                  'bg-emerald-100'
-                }`}>
-                  {alertResult.severity === 'red' && <XCircle className="w-10 h-10 text-red-600" />}
-                  {alertResult.severity === 'yellow' && <AlertTriangle className="w-10 h-10 text-amber-600" />}
-                  {alertResult.severity === 'green' && <CheckCircle2 className="w-10 h-10 text-emerald-600" />}
-                </div>
-                <h2 className={`text-2xl font-serif font-semibold ${
-                  alertResult.severity === 'red' ? 'text-red-700' :
-                  alertResult.severity === 'yellow' ? 'text-amber-700' :
-                  'text-emerald-700'
-                }`}>
-                  {getSeverityLabel(alertResult.severity)}
-                </h2>
-                <div className="space-y-2 text-left max-w-sm mx-auto">
-                  {alertResult.messages.map((msg, i) => (
-                    <p key={i} className="text-base text-foreground leading-relaxed">
-                      {msg}
-                    </p>
+          {result.recommendations.length > 0 && (
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg font-serif">Recommendations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {result.recommendations.map((rec, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <ChevronRight className="w-4 h-4 mt-1 text-primary shrink-0" />
+                      <p className="text-base text-foreground/80">{rec}</p>
+                    </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
+          )}
 
-            <div className="flex flex-col gap-3">
-              <Button
-                onClick={() => setLocation('/')}
-                className="w-full h-14 text-lg font-semibold"
-              >
-                Return to Dashboard
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setLocation('/trends')}
-                className="w-full h-12 text-base"
-              >
-                View Trends
-              </Button>
+          <Button onClick={() => setLocation('/')} className="w-full h-14 text-lg font-semibold">
+            Back to Dashboard
+          </Button>
+        </div>
+        <DisclaimerFooter />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <div className="flex-1 container max-w-lg py-6">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => step === 0 ? setLocation('/') : setStep(step - 1)}
+            className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-muted"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-xl font-serif font-semibold">{steps[step].title}</h1>
+            <p className="text-sm text-muted-foreground">{steps[step].subtitle}</p>
+          </div>
+          <span className="text-sm text-muted-foreground font-medium">{step + 1} / {steps.length}</span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="flex gap-1.5 mb-8">
+          {steps.map((_, i) => (
+            <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? 'bg-primary' : 'bg-muted'}`} />
+          ))}
+        </div>
+
+        {/* Step 0: Vitals */}
+        {step === 0 && (
+          <div className="space-y-5">
+            <Card className="shadow-sm border-primary/20">
+              <CardContent className="pt-5 pb-5">
+                <div className="flex items-center gap-3 mb-4">
+                  <Scale className="w-5 h-5 text-primary" />
+                  <Label className="text-lg font-semibold">Weight (lbs) *</Label>
+                </div>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={form.weight_lbs}
+                  onChange={(e) => updateField('weight_lbs', e.target.value)}
+                  placeholder="e.g. 185"
+                  className="h-14 text-xl text-center font-semibold"
+                  autoFocus
+                />
+                <p className="text-sm text-muted-foreground mt-2 text-center">
+                  This is the most important daily measurement for CHF
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm">
+              <CardContent className="pt-5 pb-5 space-y-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <Stethoscope className="w-5 h-5 text-primary" />
+                  <Label className="text-lg font-semibold">Blood Pressure</Label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Systolic (top)</Label>
+                    <Input
+                      type="number"
+                      value={form.systolic_bp}
+                      onChange={(e) => updateField('systolic_bp', e.target.value)}
+                      placeholder="e.g. 130"
+                      className="h-12 text-lg text-center font-medium mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Diastolic (bottom)</Label>
+                    <Input
+                      type="number"
+                      value={form.diastolic_bp}
+                      onChange={(e) => updateField('diastolic_bp', e.target.value)}
+                      placeholder="e.g. 80"
+                      className="h-12 text-lg text-center font-medium mt-1"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm">
+              <CardContent className="pt-5 pb-5 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Heart className="w-4 h-4 text-primary" />
+                      <Label className="text-base font-semibold">Pulse (bpm)</Label>
+                    </div>
+                    <Input
+                      type="number"
+                      value={form.pulse_bpm}
+                      onChange={(e) => updateField('pulse_bpm', e.target.value)}
+                      placeholder="e.g. 72"
+                      className="h-12 text-lg text-center font-medium"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Activity className="w-4 h-4 text-primary" />
+                      <Label className="text-base font-semibold">SpO2 (%)</Label>
+                    </div>
+                    <Input
+                      type="number"
+                      value={form.spo2}
+                      onChange={(e) => updateField('spo2', e.target.value)}
+                      placeholder="e.g. 96"
+                      className="h-12 text-lg text-center font-medium"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 1: Symptoms */}
+        {step === 1 && (
+          <div className="space-y-3">
+            <p className="text-base text-muted-foreground mb-4">
+              Tap any symptoms that apply today. Leave unchecked if not present.
+            </p>
+            <SymptomToggle label="Breathing is worse than usual" icon={Wind} checked={form.breathing_worse} onChange={(v) => updateField('breathing_worse', v)} />
+            <SymptomToggle label="Swelling (ankles, legs, abdomen)" icon={Droplets} checked={form.swelling} onChange={(v) => updateField('swelling', v)} />
+            <SymptomToggle label="Confusion or disorientation" icon={Brain} checked={form.confusion} onChange={(v) => updateField('confusion', v)} />
+            <SymptomToggle label="Dizziness or lightheadedness" icon={Activity} checked={form.dizziness} onChange={(v) => updateField('dizziness', v)} />
+            <SymptomToggle label="Chest pain or pressure" icon={Heart} checked={form.chest_pain} onChange={(v) => updateField('chest_pain', v)} />
+            <SymptomToggle label="Fall or near-fall" icon={AlertTriangle} checked={form.fall_or_near_fall} onChange={(v) => updateField('fall_or_near_fall', v)} />
+            <SymptomToggle label="Poor appetite" icon={Utensils} checked={form.poor_appetite} onChange={(v) => updateField('poor_appetite', v)} />
+            <SymptomToggle label="Poor sleep / trouble sleeping flat" icon={Moon} checked={form.poor_sleep} onChange={(v) => updateField('poor_sleep', v)} />
+          </div>
+        )}
+
+        {/* Step 2: Medications */}
+        {step === 2 && (
+          <div className="space-y-4">
+            <Card className="shadow-sm">
+              <CardContent className="pt-6 pb-6">
+                <p className="text-lg text-center mb-6">Were all medications taken today?</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => updateField('missed_meds', false)}
+                    className={`p-6 rounded-xl border-2 text-center transition-all ${
+                      !form.missed_meds
+                        ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
+                        : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    <CheckCircle2 className={`w-8 h-8 mx-auto mb-2 ${!form.missed_meds ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+                    <p className="text-lg font-semibold">Yes, all taken</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateField('missed_meds', true)}
+                    className={`p-6 rounded-xl border-2 text-center transition-all ${
+                      form.missed_meds
+                        ? 'border-amber-400 bg-amber-50 text-amber-800'
+                        : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    <Pill className={`w-8 h-8 mx-auto mb-2 ${form.missed_meds ? 'text-amber-600' : 'text-muted-foreground'}`} />
+                    <p className="text-lg font-semibold">Some missed</p>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Step 3: Fluid & Sodium */}
+        {step === 3 && (
+          <div className="space-y-5">
+            <Card className="shadow-sm">
+              <CardContent className="pt-5 pb-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <Droplets className="w-5 h-5 text-blue-500" />
+                  <Label className="text-lg font-semibold">Fluid Intake (oz)</Label>
+                </div>
+                <Input
+                  type="number"
+                  step="1"
+                  value={form.fluid_intake_oz}
+                  onChange={(e) => updateField('fluid_intake_oz', e.target.value)}
+                  placeholder="Estimated ounces today"
+                  className="h-14 text-xl text-center font-semibold"
+                />
+                {patient.fluid_limit_oz && (
+                  <p className="text-sm text-muted-foreground mt-2 text-center">
+                    Daily limit: {patient.fluid_limit_oz} oz
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1 text-center">
+                  Tip: 1 cup = 8 oz, 1 water bottle = ~16 oz
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm">
+              <CardContent className="pt-5 pb-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <Utensils className="w-5 h-5 text-orange-500" />
+                  <Label className="text-lg font-semibold">Sodium Intake (mg)</Label>
+                </div>
+                <Input
+                  type="number"
+                  step="100"
+                  value={form.sodium_mg}
+                  onChange={(e) => updateField('sodium_mg', e.target.value)}
+                  placeholder="Estimated mg today"
+                  className="h-14 text-xl text-center font-semibold"
+                />
+                {patient.sodium_limit_mg && (
+                  <p className="text-sm text-muted-foreground mt-2 text-center">
+                    Daily limit: {patient.sodium_limit_mg} mg
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1 text-center">
+                  Tip: Check nutrition labels. Most CHF patients aim for under 1500-2000mg/day.
+                </p>
+              </CardContent>
+            </Card>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p className="text-sm text-blue-800">
+                <strong>Don't worry about exact numbers.</strong> An estimate is better than nothing.
+                Your doctor can help set specific limits.
+              </p>
             </div>
           </div>
         )}
 
-        {/* Navigation buttons (steps 1-6) */}
-        {step < 7 && (
-          <div className="mt-8 flex gap-3">
-            {step > 1 && (
-              <Button
-                variant="outline"
-                onClick={prevStep}
-                className="h-14 text-base font-semibold flex-1"
-              >
-                <ArrowLeft className="mr-2 w-5 h-5" />
-                Back
-              </Button>
-            )}
+        {/* Step 4: Notes */}
+        {step === 4 && (
+          <div className="space-y-5">
+            <Card className="shadow-sm">
+              <CardContent className="pt-5 pb-5">
+                <Label className="text-lg font-semibold mb-3 block">
+                  Anything else to note today?
+                </Label>
+                <Textarea
+                  value={form.notes}
+                  onChange={(e) => updateField('notes', e.target.value)}
+                  placeholder="How is he doing overall? Any changes? Anything the doctor should know?"
+                  className="min-h-[150px] text-base"
+                />
+                <p className="text-sm text-muted-foreground mt-2">
+                  Optional — but helpful for doctor visits and tracking patterns
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="mt-8 flex gap-3">
+          {step > 0 && (
             <Button
-              onClick={nextStep}
-              disabled={!canAdvance() || submitting}
+              variant="outline"
+              onClick={() => setStep(step - 1)}
               className="h-14 text-base font-semibold flex-1"
             >
+              <ArrowLeft className="mr-2 w-5 h-5" />
+              Back
+            </Button>
+          )}
+          {step < steps.length - 1 ? (
+            <Button
+              onClick={() => setStep(step + 1)}
+              className="h-14 text-base font-semibold flex-1"
+              disabled={!canProceed}
+            >
+              Next
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSubmit}
+              className="h-14 text-base font-semibold flex-1"
+              disabled={submitting}
+            >
               {submitting ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Saving...
-                </>
-              ) : step === 6 ? (
-                <>
-                  <Check className="mr-2 w-5 h-5" />
-                  Complete Check-in
-                </>
+                <><Loader2 className="mr-2 w-5 h-5 animate-spin" /> Saving...</>
               ) : (
                 <>
-                  Next
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                  <CheckCircle2 className="mr-2 w-5 h-5" />
+                  Complete Check-in
                 </>
               )}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <DisclaimerFooter />
     </div>

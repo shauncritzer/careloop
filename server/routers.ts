@@ -57,10 +57,64 @@ export const appRouter = router({
         recipientEmail: z.string().optional(),
       }))
       .mutation(async ({ input }) => {
-        // In-app alert notification - stored in Supabase alerts table
-        // Email notification would be sent via Supabase Edge Functions or external service
         console.log(`[CareLoop Alert] ${input.severity.toUpperCase()} for ${input.patientName}: ${input.messages.join(', ')}`);
         return { sent: true };
+      }),
+
+    askAssistant: publicProcedure
+      .input(z.object({
+        question: z.string(),
+        patientName: z.string(),
+        recentData: z.string(),
+        conversationHistory: z.array(z.object({
+          role: z.enum(['user', 'assistant']),
+          content: z.string(),
+        })),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          const historyMessages = input.conversationHistory.map(m => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          }));
+
+          const response = await invokeLLM({
+            messages: [
+              {
+                role: 'system',
+                content: `You are a caring and knowledgeable assistant for CareLoop, a caregiver companion app for someone caring for a loved one with congestive heart failure (CHF).
+
+The caregiver's name is the person asking you questions. The patient is ${input.patientName}.
+
+Recent health data for ${input.patientName}:
+${input.recentData}
+
+Guidelines:
+- Be warm, supportive, and clear. This caregiver is stressed and worried.
+- Explain things in plain language, not medical jargon.
+- When discussing concerning readings, be honest but not alarming.
+- Always recommend confirming with the doctor or care team for important decisions.
+- NEVER diagnose, prescribe, or say things like "in danger" or "heart failure exacerbation".
+- DO say "contact doctor", "monitor closely", "this may need medical attention".
+- Help interpret weight changes, BP readings, fluid/sodium intake, and symptoms in the context of CHF.
+- Be specific about what numbers mean and what to watch for.
+- Keep responses concise but thorough. Use bullet points when helpful.
+- If you don't know something, say so honestly and suggest asking the doctor.`,
+              },
+              ...historyMessages,
+              {
+                role: 'user',
+                content: input.question,
+              },
+            ],
+          });
+
+          const content = response.choices?.[0]?.message?.content;
+          return typeof content === 'string' ? content : 'I\'m sorry, I wasn\'t able to process that. Please try again.';
+        } catch (error) {
+          console.error('LLM assistant failed:', error);
+          return 'I\'m having trouble connecting right now. Please try again in a moment.';
+        }
       }),
   }),
 });

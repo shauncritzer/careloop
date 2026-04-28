@@ -1,36 +1,30 @@
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-import { usePatient, useDailyLogs, useAlerts, useFamilyReadAccess } from '@/hooks/useSupabaseData';
+import { usePatient, useDailyLogs, useAlerts } from '@/hooks/useSupabaseData';
 import { getSeverityLabel, getSeverityColor } from '@/lib/alertEngine';
 import type { Severity } from '@/lib/alertEngine';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Heart, ClipboardCheck, TrendingUp, FileText, Users, LogOut, Loader2,
-  AlertTriangle, CheckCircle2, XCircle, Calendar, ChevronRight, Settings
+  AlertTriangle, CheckCircle2, XCircle, Calendar, ChevronRight, Settings,
+  MessageCircle
 } from 'lucide-react';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 
 export default function Home() {
-  const { user, loading: authLoading, signOut } = useSupabaseAuth();
+  const { user, loading: authLoading, isAuthenticated, signOut } = useSupabaseAuth();
   const [, setLocation] = useLocation();
   const { patient, loading: patientLoading } = usePatient();
   const { logs } = useDailyLogs(patient?.id, 7);
   const { alerts } = useAlerts(patient?.id, 5);
-  const { isFamilyMember } = useFamilyReadAccess();
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!authLoading && !isAuthenticated) {
       setLocation('/login');
     }
-  }, [authLoading, user, setLocation]);
-
-  useEffect(() => {
-    if (!authLoading && user && isFamilyMember && !patient) {
-      setLocation('/family');
-    }
-  }, [authLoading, user, isFamilyMember, patient, setLocation]);
+  }, [authLoading, isAuthenticated, setLocation]);
 
   if (authLoading || patientLoading) {
     return (
@@ -43,7 +37,7 @@ export default function Home() {
     );
   }
 
-  if (!user) return null;
+  if (!isAuthenticated) return null;
 
   if (!patient) {
     return (
@@ -108,6 +102,7 @@ export default function Home() {
           </p>
         </div>
 
+        {/* Status Card */}
         <Card className={`shadow-lg border-2 ${colors.border} ${colors.bg}`}>
           <CardContent className="py-6">
             <div className="flex items-center gap-4">
@@ -140,6 +135,7 @@ export default function Home() {
           </CardContent>
         </Card>
 
+        {/* Primary CTA */}
         <Button
           onClick={() => setLocation('/check-in')}
           className="w-full h-16 text-lg font-semibold shadow-md"
@@ -149,14 +145,26 @@ export default function Home() {
           {todayLog ? "Update Today's Check-in" : "Start Today's Check-in"}
         </Button>
 
+        {/* Quick Actions */}
         <div className="grid grid-cols-1 gap-3">
+          <button onClick={() => setLocation('/ask')} className="flex items-center gap-4 p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors min-h-[64px]">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <MessageCircle className="w-6 h-6 text-primary" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-base font-semibold text-foreground">Ask a Question</p>
+              <p className="text-sm text-muted-foreground">Get guidance about care and symptoms</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </button>
+
           <button onClick={() => setLocation('/trends')} className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-accent/50 transition-colors min-h-[64px]">
             <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
               <TrendingUp className="w-6 h-6 text-blue-600" />
             </div>
             <div className="flex-1 text-left">
-              <p className="text-base font-semibold text-foreground">7-Day Trends</p>
-              <p className="text-sm text-muted-foreground">View health metrics over time</p>
+              <p className="text-base font-semibold text-foreground">Health Trends</p>
+              <p className="text-sm text-muted-foreground">View metrics and patterns over time</p>
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground" />
           </button>
@@ -178,12 +186,13 @@ export default function Home() {
             </div>
             <div className="flex-1 text-left">
               <p className="text-base font-semibold text-foreground">Family Access</p>
-              <p className="text-sm text-muted-foreground">Manage family member access</p>
+              <p className="text-sm text-muted-foreground">Share read-only access with family</p>
             </div>
             <ChevronRight className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
+        {/* Recent Alerts */}
         {alerts.length > 0 && (
           <div>
             <h3 className="text-lg font-serif font-semibold mb-3">Recent Alerts</h3>

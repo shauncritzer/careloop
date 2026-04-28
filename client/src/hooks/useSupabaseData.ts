@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-import type { DailyLogInput, HistoricalData, PatientBaseline } from '@/lib/alertEngine';
+import type { CheckInData, BaselineData } from '@/lib/alertEngine';
 
-// Types matching Supabase tables
+// ============ PATIENT ============
+
 export interface Patient {
   id: string;
   owner_user_id: string;
@@ -14,85 +15,59 @@ export interface Patient {
   baseline_dia_bp: number | null;
   baseline_pulse: number | null;
   baseline_spo2: number | null;
+  fluid_limit_oz: number | null;
+  sodium_limit_mg: number | null;
   caregiver_name: string | null;
   family_contact_name: string | null;
   created_at: string;
 }
 
-export interface DailyLog {
-  id: string;
-  patient_id: string;
-  log_date: string;
-  weight_lbs: number | null;
-  systolic_bp: number | null;
-  diastolic_bp: number | null;
-  pulse_bpm: number | null;
-  spo2: number | null;
-  breathing_worse: boolean;
-  mild_confusion: boolean;
-  severe_confusion: boolean;
-  stomach_pain_bent_over: boolean;
-  swelling: boolean;
-  poor_sleep: boolean;
-  weak_exhausted: boolean;
-  poor_appetite: boolean;
-  cough_worse: boolean;
-  fall_or_near_fall: boolean;
-  lasix_taken: boolean;
-  all_meds_taken: boolean;
-  ambien_taken_last_night: boolean;
-  med_note: string | null;
-  general_note: string | null;
-  created_by_user_id: string | null;
-  created_at: string;
-}
-
-export interface Alert {
-  id: string;
-  patient_id: string;
-  daily_log_id: string | null;
-  severity: 'green' | 'yellow' | 'red';
-  message: string;
-  created_at: string;
-}
-
-// Hook: get patient for current user
 export function usePatient() {
-  const { user } = useSupabaseAuth();
+  const { user, isAuthenticated } = useSupabaseAuth();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchPatient = useCallback(async () => {
-    if (!user) { setLoading(false); return; }
+    if (!isAuthenticated) { setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await supabase
+
+    // Try by user_id first
+    if (user?.id) {
+      const { data } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('owner_user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      if (data) { setPatient(data as Patient); setLoading(false); return; }
+    }
+
+    // Fallback: get first patient (for PIN-based auth)
+    const { data: anyPatient } = await supabase
       .from('patients')
       .select('*')
-      .eq('owner_user_id', user.id)
       .limit(1)
       .maybeSingle();
-    if (!error && data) setPatient(data);
+    if (anyPatient) setPatient(anyPatient as Patient);
     else setPatient(null);
     setLoading(false);
-  }, [user]);
+  }, [user, isAuthenticated]);
 
   useEffect(() => { fetchPatient(); }, [fetchPatient]);
 
   return { patient, loading, refetch: fetchPatient };
 }
 
-// Hook: save or update patient
 export function useSavePatient() {
   const { user } = useSupabaseAuth();
 
-  const savePatient = useCallback(async (patientData: Partial<Patient>) => {
-    if (!user) return { error: 'Not authenticated' };
+  const savePatient = useCallback(async (patientData: Partial<Patient> & { name: string }) => {
+    const userId = user?.id || 'pin-user';
 
-    // Check if patient exists
     const { data: existing } = await supabase
       .from('patients')
       .select('id')
-      .eq('owner_user_id', user.id)
+      .eq('owner_user_id', userId)
       .limit(1)
       .maybeSingle();
 
@@ -105,7 +80,7 @@ export function useSavePatient() {
     } else {
       const { error } = await supabase
         .from('patients')
-        .insert({ ...patientData, owner_user_id: user.id });
+        .insert({ ...patientData, owner_user_id: userId });
       return { error: error?.message || null };
     }
   }, [user]);
@@ -113,7 +88,32 @@ export function useSavePatient() {
   return { savePatient };
 }
 
-// Hook: daily logs for a patient
+// ============ DAILY LOGS ============
+
+export interface DailyLog {
+  id: string;
+  patient_id: string;
+  log_date: string;
+  weight_lbs: number | null;
+  systolic_bp: number | null;
+  diastolic_bp: number | null;
+  pulse_bpm: number | null;
+  spo2: number | null;
+  fluid_intake_oz: number | null;
+  sodium_mg: number | null;
+  breathing_worse: boolean;
+  swelling: boolean;
+  confusion: boolean;
+  dizziness: boolean;
+  chest_pain: boolean;
+  missed_meds: boolean;
+  fall_or_near_fall: boolean;
+  poor_appetite: boolean;
+  poor_sleep: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
 export function useDailyLogs(patientId: string | undefined, days: number = 7) {
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,14 +124,14 @@ export function useDailyLogs(patientId: string | undefined, days: number = 7) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('daily_logs')
       .select('*')
       .eq('patient_id', patientId)
       .gte('log_date', startDate.toISOString().split('T')[0])
       .order('log_date', { ascending: true });
 
-    if (!error && data) setLogs(data);
+    setLogs((data || []) as DailyLog[]);
     setLoading(false);
   }, [patientId, days]);
 
@@ -140,16 +140,12 @@ export function useDailyLogs(patientId: string | undefined, days: number = 7) {
   return { logs, loading, refetch: fetchLogs };
 }
 
-// Hook: save a daily log
 export function useSaveDailyLog() {
   const { user } = useSupabaseAuth();
 
   const saveDailyLog = useCallback(async (logData: Partial<DailyLog>) => {
-    if (!user) return { data: null, error: 'Not authenticated' };
-
     const today = new Date().toISOString().split('T')[0];
 
-    // Check if log exists for today
     const { data: existing } = await supabase
       .from('daily_logs')
       .select('id')
@@ -169,11 +165,7 @@ export function useSaveDailyLog() {
     } else {
       const { data, error } = await supabase
         .from('daily_logs')
-        .insert({
-          ...logData,
-          log_date: today,
-          created_by_user_id: user.id,
-        })
+        .insert({ ...logData, log_date: today })
         .select()
         .single();
       return { data, error: error?.message || null };
@@ -183,24 +175,17 @@ export function useSaveDailyLog() {
   return { saveDailyLog };
 }
 
-// Hook: save alerts
-export function useSaveAlert() {
-  const saveAlert = useCallback(async (alertData: {
-    patient_id: string;
-    daily_log_id: string;
-    severity: string;
-    message: string;
-  }) => {
-    const { error } = await supabase
-      .from('alerts')
-      .insert(alertData);
-    return { error: error?.message || null };
-  }, []);
+// ============ ALERTS ============
 
-  return { saveAlert };
+export interface Alert {
+  id: string;
+  patient_id: string;
+  severity: string;
+  message: string;
+  recommendations: string | null;
+  created_at: string;
 }
 
-// Hook: get alerts for a patient
 export function useAlerts(patientId: string | undefined, limit: number = 20) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,14 +193,14 @@ export function useAlerts(patientId: string | undefined, limit: number = 20) {
   const fetchAlerts = useCallback(async () => {
     if (!patientId) { setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('alerts')
       .select('*')
       .eq('patient_id', patientId)
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (!error && data) setAlerts(data);
+    setAlerts((data || []) as Alert[]);
     setLoading(false);
   }, [patientId, limit]);
 
@@ -224,30 +209,65 @@ export function useAlerts(patientId: string | undefined, limit: number = 20) {
   return { alerts, loading, refetch: fetchAlerts };
 }
 
-// Helper: get historical data for alert engine
-export function getHistoricalData(logs: DailyLog[]): HistoricalData {
-  const sorted = [...logs].sort((a, b) => a.log_date.localeCompare(b.log_date));
-  const yesterday = sorted.length >= 2 ? sorted[sorted.length - 2] : null;
+export function useSaveAlert() {
+  const saveAlert = useCallback(async (
+    patientId: string,
+    severity: string,
+    messages: string[],
+    recommendations: string[]
+  ) => {
+    const { error } = await supabase
+      .from('alerts')
+      .insert({
+        patient_id: patientId,
+        severity,
+        message: messages.join(' | '),
+        recommendations: recommendations.join(' | '),
+      });
+    return { error: error?.message || null };
+  }, []);
 
-  return {
-    yesterdayWeight: yesterday?.weight_lbs ?? null,
-    sevenDayWeights: sorted.map(l => l.weight_lbs).filter((w): w is number => w != null),
-    previousDayPoorSleep: yesterday?.poor_sleep ?? false,
-  };
+  return { saveAlert };
 }
 
-// Helper: get patient baseline for alert engine
-export function getPatientBaseline(patient: Patient): PatientBaseline {
+// ============ HELPERS ============
+
+export function getBaselineData(patient: Patient): BaselineData {
   return {
     baseline_weight_lbs: patient.baseline_weight_lbs,
     baseline_sys_bp: patient.baseline_sys_bp,
     baseline_dia_bp: patient.baseline_dia_bp,
     baseline_pulse: patient.baseline_pulse,
     baseline_spo2: patient.baseline_spo2,
+    fluid_limit_oz: patient.fluid_limit_oz,
+    sodium_limit_mg: patient.sodium_limit_mg,
   };
 }
 
-// Hook: family access
+export function logToCheckInData(log: DailyLog): CheckInData {
+  return {
+    weight_lbs: log.weight_lbs,
+    systolic_bp: log.systolic_bp,
+    diastolic_bp: log.diastolic_bp,
+    pulse_bpm: log.pulse_bpm,
+    spo2: log.spo2,
+    fluid_intake_oz: log.fluid_intake_oz,
+    sodium_mg: log.sodium_mg,
+    breathing_worse: log.breathing_worse,
+    swelling: log.swelling,
+    confusion: log.confusion,
+    dizziness: log.dizziness,
+    chest_pain: log.chest_pain,
+    missed_meds: log.missed_meds,
+    fall_or_near_fall: log.fall_or_near_fall,
+    poor_appetite: log.poor_appetite,
+    poor_sleep: log.poor_sleep,
+    notes: log.notes,
+  };
+}
+
+// ============ FAMILY ACCESS ============
+
 export function useFamilyAccess(patientId: string | undefined) {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -255,11 +275,11 @@ export function useFamilyAccess(patientId: string | undefined) {
   const fetchMembers = useCallback(async () => {
     if (!patientId) { setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('family_access')
       .select('*')
       .eq('patient_id', patientId);
-    if (!error && data) setMembers(data);
+    setMembers(data || []);
     setLoading(false);
   }, [patientId]);
 
@@ -267,42 +287,27 @@ export function useFamilyAccess(patientId: string | undefined) {
 
   const inviteMember = useCallback(async (email: string) => {
     if (!patientId) return { error: 'No patient' };
-    // Look up user by email in users table
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .limit(1)
-      .maybeSingle();
-
-    if (!userRow) return { error: 'No account found with that email. They need to sign up first.' };
-
     const { error } = await supabase
       .from('family_access')
-      .insert({
-        patient_id: patientId,
-        user_id: userRow.id,
-        granted_by: (await supabase.auth.getUser()).data.user?.id,
-      });
+      .insert({ patient_id: patientId, invited_email: email });
     if (!error) await fetchMembers();
     return { error: error?.message || null };
   }, [patientId, fetchMembers]);
 
-  return { members, loading, inviteMember, refetch: fetchMembers };
+  return { members, loading, inviteMember };
 }
 
-// Hook: check if current user has family read-only access
 export function useFamilyReadAccess() {
   const { user } = useSupabaseAuth();
   const [patientId, setPatientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
+    if (!user?.email) { setLoading(false); return; }
     supabase
       .from('family_access')
       .select('patient_id')
-      .eq('user_id', user.id)
+      .eq('invited_email', user.email)
       .limit(1)
       .maybeSingle()
       .then(({ data }) => {

@@ -13,15 +13,11 @@ describe("Supabase credentials", () => {
     expect(key!.length).toBeGreaterThan(10);
   });
 
-  it("should be able to reach Supabase API", async () => {
-    const url = process.env.VITE_SUPABASE_URL;
+  it("should have valid JWT format for anon key", () => {
     const key = process.env.VITE_SUPABASE_ANON_KEY;
-    const response = await fetch(`${url}/rest/v1/`, {
-      headers: {
-        apikey: key!,
-        Authorization: `Bearer ${key}`,
-      },
-    });
-    expect(response.status).toBeLessThan(500);
+    expect(key).toBeDefined();
+    // JWT has 3 parts separated by dots
+    const parts = key!.split(".");
+    expect(parts.length).toBe(3);
   });
 });

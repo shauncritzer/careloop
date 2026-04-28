@@ -5,13 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Loader2, TrendingUp } from 'lucide-react';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine
 } from 'recharts';
 
 export default function Trends() {
   const [, setLocation] = useLocation();
   const { patient, loading: patientLoading } = usePatient();
-  const { logs, loading: logsLoading } = useDailyLogs(patient?.id, 7);
+  const { logs, loading: logsLoading } = useDailyLogs(patient?.id, 14);
 
   const chartData = useMemo(() => {
     return logs.map(log => ({
@@ -21,12 +21,13 @@ export default function Trends() {
       diastolic: log.diastolic_bp,
       pulse: log.pulse_bpm,
       spo2: log.spo2,
+      fluid: log.fluid_intake_oz,
+      sodium: log.sodium_mg,
       symptoms: [
-        log.breathing_worse, log.mild_confusion, log.severe_confusion,
-        log.stomach_pain_bent_over, log.swelling, log.poor_sleep,
-        log.weak_exhausted, log.poor_appetite, log.cough_worse, log.fall_or_near_fall
+        log.breathing_worse, log.swelling, log.confusion, log.dizziness,
+        log.chest_pain, log.fall_or_near_fall, log.poor_appetite, log.poor_sleep
       ].filter(Boolean).length,
-      medsAdherence: [log.lasix_taken, log.all_meds_taken].filter(Boolean).length,
+      medsTaken: !log.missed_meds,
     }));
   }, [logs]);
 
@@ -54,8 +55,8 @@ export default function Trends() {
             <TrendingUp className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-serif font-semibold">7-Day Trends</h1>
-            <p className="text-muted-foreground">Health metrics for {patient?.name}</p>
+            <h1 className="text-2xl font-serif font-semibold">Health Trends</h1>
+            <p className="text-muted-foreground">Tracking metrics for {patient?.name}</p>
           </div>
         </div>
 
@@ -67,19 +68,23 @@ export default function Trends() {
           </Card>
         ) : (
           <div className="space-y-6">
-            {/* Weight Chart */}
-            <Card className="shadow-sm">
+            {/* Weight Chart — most important */}
+            <Card className="shadow-sm border-primary/20">
               <CardHeader>
                 <CardTitle className="text-lg font-serif">Weight (lbs)</CardTitle>
+                <p className="text-sm text-muted-foreground">The most important CHF metric — watch for sudden increases</p>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={240}>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="date" tick={{ fontSize: 13 }} />
-                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 13 }} />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    <Line type="monotone" dataKey="weight" stroke="#0d9488" strokeWidth={2.5} dot={{ r: 5 }} name="Weight" />
+                    {patient?.baseline_weight_lbs && (
+                      <ReferenceLine y={patient.baseline_weight_lbs} stroke="#94a3b8" strokeDasharray="5 5" label={{ value: 'Baseline', fontSize: 11, fill: '#94a3b8' }} />
+                    )}
+                    <Line type="monotone" dataKey="weight" stroke="#0d9488" strokeWidth={3} dot={{ r: 5, fill: '#0d9488' }} name="Weight" connectNulls />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -94,12 +99,12 @@ export default function Trends() {
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="date" tick={{ fontSize: 13 }} />
-                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 13 }} />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="systolic" stroke="#ef4444" strokeWidth={2} dot={{ r: 4 }} name="Systolic" />
-                    <Line type="monotone" dataKey="diastolic" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} name="Diastolic" />
+                    <Line type="monotone" dataKey="systolic" stroke="#ef4444" strokeWidth={2} dot={{ r: 4 }} name="Systolic" connectNulls />
+                    <Line type="monotone" dataKey="diastolic" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} name="Diastolic" connectNulls />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -114,21 +119,69 @@ export default function Trends() {
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="date" tick={{ fontSize: 13 }} />
-                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 13 }} />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="pulse" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} name="Pulse (bpm)" />
-                    <Line type="monotone" dataKey="spo2" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 4 }} name="SpO2 (%)" />
+                    <Line type="monotone" dataKey="pulse" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} name="Pulse (bpm)" connectNulls />
+                    <Line type="monotone" dataKey="spo2" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 4 }} name="SpO2 (%)" connectNulls />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Symptoms & Meds */}
+            {/* Fluid Intake Chart */}
             <Card className="shadow-sm">
               <CardHeader>
-                <CardTitle className="text-lg font-serif">Symptoms & Medication Adherence</CardTitle>
+                <CardTitle className="text-lg font-serif">Fluid Intake (oz)</CardTitle>
+                {patient?.fluid_limit_oz && (
+                  <p className="text-sm text-muted-foreground">Daily limit: {patient.fluid_limit_oz} oz</p>
+                )}
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    {patient?.fluid_limit_oz && (
+                      <ReferenceLine y={patient.fluid_limit_oz} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'Limit', fontSize: 11, fill: '#ef4444' }} />
+                    )}
+                    <Bar dataKey="fluid" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Fluid (oz)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Sodium Intake Chart */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg font-serif">Sodium Intake (mg)</CardTitle>
+                {patient?.sodium_limit_mg && (
+                  <p className="text-sm text-muted-foreground">Daily limit: {patient.sodium_limit_mg} mg</p>
+                )}
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    {patient?.sodium_limit_mg && (
+                      <ReferenceLine y={patient.sodium_limit_mg} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'Limit', fontSize: 11, fill: '#ef4444' }} />
+                    )}
+                    <Bar dataKey="sodium" fill="#f97316" radius={[4, 4, 0, 0]} name="Sodium (mg)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Symptoms & Meds Summary */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-lg font-serif">Daily Summary</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -138,28 +191,18 @@ export default function Trends() {
                       <div className="flex-1 flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">Symptoms:</span>
                         <div className="flex gap-1">
-                          {Array.from({ length: 10 }).map((_, j) => (
+                          {Array.from({ length: 8 }).map((_, j) => (
                             <div
                               key={j}
-                              className={`w-3 h-3 rounded-full ${
-                                j < day.symptoms ? 'bg-amber-400' : 'bg-muted'
-                              }`}
+                              className={`w-3 h-3 rounded-full ${j < day.symptoms ? 'bg-amber-400' : 'bg-muted'}`}
                             />
                           ))}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Meds:</span>
-                        <div className="flex gap-1">
-                          {Array.from({ length: 2 }).map((_, j) => (
-                            <div
-                              key={j}
-                              className={`w-3 h-3 rounded-full ${
-                                j < day.medsAdherence ? 'bg-emerald-400' : 'bg-red-300'
-                              }`}
-                            />
-                          ))}
-                        </div>
+                      <div className={`px-2 py-1 rounded text-xs font-medium ${
+                        day.medsTaken ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {day.medsTaken ? 'Meds taken' : 'Meds missed'}
                       </div>
                     </div>
                   ))}

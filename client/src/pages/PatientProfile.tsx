@@ -23,6 +23,8 @@ export default function PatientProfile() {
     baseline_dia_bp: '',
     baseline_pulse: '',
     baseline_spo2: '',
+    fluid_limit_oz: '',
+    sodium_limit_mg: '',
     caregiver_name: '',
     family_contact_name: '',
   });
@@ -37,6 +39,8 @@ export default function PatientProfile() {
         baseline_dia_bp: patient.baseline_dia_bp?.toString() || '',
         baseline_pulse: patient.baseline_pulse?.toString() || '',
         baseline_spo2: patient.baseline_spo2?.toString() || '',
+        fluid_limit_oz: patient.fluid_limit_oz?.toString() || '',
+        sodium_limit_mg: patient.sodium_limit_mg?.toString() || '',
         caregiver_name: patient.caregiver_name || '',
         family_contact_name: patient.family_contact_name || '',
       });
@@ -59,6 +63,8 @@ export default function PatientProfile() {
       baseline_dia_bp: form.baseline_dia_bp ? parseInt(form.baseline_dia_bp) : null,
       baseline_pulse: form.baseline_pulse ? parseInt(form.baseline_pulse) : null,
       baseline_spo2: form.baseline_spo2 ? parseInt(form.baseline_spo2) : null,
+      fluid_limit_oz: form.fluid_limit_oz ? parseFloat(form.fluid_limit_oz) : null,
+      sodium_limit_mg: form.sodium_limit_mg ? parseInt(form.sodium_limit_mg) : null,
       caregiver_name: form.caregiver_name || null,
       family_contact_name: form.family_contact_name || null,
     });
@@ -138,13 +144,13 @@ export default function PatientProfile() {
             <CardHeader>
               <CardTitle className="text-xl font-serif">Baseline Vitals</CardTitle>
               <CardDescription>
-                Normal values for this patient — used to detect changes
+                Normal values for this patient — used to detect changes. Ask the doctor for these if you're not sure.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-base font-medium">Weight (lbs)</Label>
+                  <Label className="text-base font-medium">Dry Weight (lbs)</Label>
                   <Input
                     type="number"
                     step="0.1"
@@ -153,6 +159,7 @@ export default function PatientProfile() {
                     placeholder="e.g. 185"
                     className="h-12 text-base"
                   />
+                  <p className="text-xs text-muted-foreground">Weight without extra fluid — ask the doctor</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-base font-medium">SpO2 (%)</Label>
@@ -167,7 +174,7 @@ export default function PatientProfile() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-base font-medium">Systolic BP</Label>
+                  <Label className="text-base font-medium">Systolic BP (top number)</Label>
                   <Input
                     type="number"
                     value={form.baseline_sys_bp}
@@ -177,7 +184,7 @@ export default function PatientProfile() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-base font-medium">Diastolic BP</Label>
+                  <Label className="text-base font-medium">Diastolic BP (bottom number)</Label>
                   <Input
                     type="number"
                     value={form.baseline_dia_bp}
@@ -196,6 +203,49 @@ export default function PatientProfile() {
                   placeholder="e.g. 72"
                   className="h-12 text-base"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Fluid & Sodium Limits */}
+          <Card className="shadow-sm border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-xl font-serif">Fluid & Sodium Limits</CardTitle>
+              <CardDescription>
+                Daily limits prescribed by the doctor. These are critical for CHF management.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">Fluid Limit (oz/day)</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    value={form.fluid_limit_oz}
+                    onChange={(e) => updateField('fluid_limit_oz', e.target.value)}
+                    placeholder="e.g. 64"
+                    className="h-12 text-base"
+                  />
+                  <p className="text-xs text-muted-foreground">Common CHF limit: 48-64 oz (6-8 cups)</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">Sodium Limit (mg/day)</Label>
+                  <Input
+                    type="number"
+                    step="100"
+                    value={form.sodium_limit_mg}
+                    onChange={(e) => updateField('sodium_limit_mg', e.target.value)}
+                    placeholder="e.g. 1500"
+                    className="h-12 text-base"
+                  />
+                  <p className="text-xs text-muted-foreground">Common CHF limit: 1500-2000 mg/day</p>
+                </div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                <p className="text-sm text-blue-800">
+                  If you don't know these limits yet, leave them blank and ask the doctor at the next visit. You can update them anytime.
+                </p>
               </div>
             </CardContent>
           </Card>

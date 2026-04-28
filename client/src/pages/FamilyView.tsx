@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   ArrowLeft, Loader2, Users, UserPlus, AlertTriangle, CheckCircle2, XCircle,
-  Heart, Calendar, Mail
+  Heart, Calendar, Mail, Copy, Share2
 } from 'lucide-react';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import { toast } from 'sonner';
@@ -134,6 +134,7 @@ export default function FamilyView() {
   const { members, inviteMember } = useFamilyAccess(patient?.id);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,10 +144,22 @@ export default function FamilyView() {
     if (error) {
       toast.error(error);
     } else {
-      toast.success('Family member invited successfully');
+      toast.success('Family member added');
       setInviteEmail('');
     }
     setInviting(false);
+  };
+
+  const handleCopyLink = async () => {
+    const link = `${window.location.origin}/signup`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+      toast.success('Sign-up link copied');
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      toast.error('Could not copy link');
+    }
   };
 
   if (patientLoading || familyLoading) {
@@ -198,16 +211,40 @@ export default function FamilyView() {
           </div>
           <div>
             <h1 className="text-2xl font-serif font-semibold">Family Access</h1>
-            <p className="text-muted-foreground">Invite family members to view patient status</p>
+            <p className="text-muted-foreground">Let family members check in on {patient?.name || 'the patient'} remotely</p>
           </div>
         </div>
+
+        {/* How it works */}
+        <Card className="shadow-sm mb-6 bg-blue-50/50 border-blue-200">
+          <CardContent className="py-5">
+            <h3 className="text-base font-semibold mb-3">How Family Access Works</h3>
+            <div className="space-y-2 text-sm text-foreground/80">
+              <p><strong>Step 1:</strong> Share the sign-up link below with your family member.</p>
+              <p><strong>Step 2:</strong> They create an account with their email and password.</p>
+              <p><strong>Step 3:</strong> Enter their email below to grant them read-only access.</p>
+              <p><strong>Step 4:</strong> They sign in using the "email" option on the login page and see a read-only view of {patient?.name || 'the patient'}'s status.</p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleCopyLink}
+              className="mt-4 h-11"
+            >
+              {linkCopied ? (
+                <><CheckCircle2 className="mr-2 w-4 h-4" /> Link Copied</>
+              ) : (
+                <><Share2 className="mr-2 w-4 h-4" /> Copy Sign-Up Link for Family</>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Invite form */}
         <Card className="shadow-sm mb-6">
           <CardHeader>
             <CardTitle className="text-lg font-serif flex items-center gap-2">
               <UserPlus className="w-5 h-5" />
-              Invite Family Member
+              Grant Access by Email
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -222,11 +259,11 @@ export default function FamilyView() {
                 />
               </div>
               <Button type="submit" className="h-12 px-6" disabled={inviting}>
-                {inviting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Invite'}
+                {inviting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Add'}
               </Button>
             </form>
             <p className="text-sm text-muted-foreground mt-3">
-              They must have a CareLoop account. They'll see a read-only view of the patient's status and recent data.
+              Enter the same email they used to create their account. They'll be able to see status, vitals, and alerts — but can't edit anything.
             </p>
           </CardContent>
         </Card>
@@ -239,7 +276,7 @@ export default function FamilyView() {
           <CardContent>
             {members.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">
-                No family members invited yet.
+                No family members added yet.
               </p>
             ) : (
               <div className="space-y-3">
@@ -249,7 +286,9 @@ export default function FamilyView() {
                       <Mail className="w-5 h-5 text-muted-foreground" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">User ID: {member.user_id?.slice(0, 8)}...</p>
+                      <p className="text-sm font-medium">
+                        {member.invited_email || `User: ${member.user_id?.slice(0, 8)}...`}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         Added {new Date(member.created_at).toLocaleDateString()}
                       </p>
