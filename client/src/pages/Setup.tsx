@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useSupabaseAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,7 @@ import { Heart, Loader2, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 
 export default function Setup() {
-  const { isAuthenticated, loading, setupPin } = useSupabaseAuth();
+  const { isAuthenticated, loading, setupPin } = useAuth();
   const [, setLocation] = useLocation();
   const [step, setStep] = useState<'name' | 'pin'>('name');
   const [caregiverName, setCaregiverName] = useState('');

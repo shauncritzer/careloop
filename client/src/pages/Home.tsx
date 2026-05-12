@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useSupabaseAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { usePatient, useDailyLogs, useAlerts } from '@/hooks/useCareData';
 import { getSeverityLabel, getSeverityColor } from '@/lib/alertEngine';
 import type { Severity } from '@/lib/alertEngine';
@@ -14,7 +14,7 @@ import {
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 
 export default function Home() {
-  const { loading: authLoading, isAuthenticated, signOut } = useSupabaseAuth();
+  const { loading: authLoading, isAuthenticated, signOut } = useAuth();
   const [, setLocation] = useLocation();
   const { patient, loading: patientLoading } = usePatient();
   const { logs } = useDailyLogs(patient?.id, 7);

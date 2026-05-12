@@ -30,3 +30,11 @@
 - [x] Write vitest tests for alert engine and key procedures
 - [x] Fix signup "User already registered" error — REMOVED in v3
 - [x] Fix infinite loading spinner on deployed site — FIXED by removing Supabase
+
+## Food Photo Sodium Scanner (v3.1)
+- [x] Add tRPC procedure `careloop.analyzeMeal` that accepts a base64 image and returns sodium estimate, food items, and confidence level
+- [x] Build MealScanner component with camera capture, photo preview, and AI result display
+- [x] Add "Scan Meal" button to daily check-in fluid/sodium card
+- [x] Add running daily sodium total tracker showing remaining budget vs limit
+- [x] Scanned sodium auto-adds to sodium_mg field (cumulative across multiple scans)
+- [x] 31 tests passing, 0 TypeScript errors after integration

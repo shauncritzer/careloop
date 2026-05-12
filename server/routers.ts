@@ -247,6 +247,110 @@ Guidelines:
         }
       }),
 
+    // ===== LLM: ANALYZE MEAL (food photo → sodium estimate) =====
+    analyzeMeal: publicProcedure
+      .input(z.object({
+        imageBase64: z.string(), // base64-encoded image data (no data: prefix)
+        mimeType: z.string().default('image/jpeg'),
+        patientSodiumLimitMg: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        try {
+          const response = await invokeLLM({
+            messages: [
+              {
+                role: 'system',
+                content: `You are a nutrition analysis assistant specializing in sodium content estimation for CHF (congestive heart failure) patients. Your job is to analyze food photos and estimate sodium content accurately.
+
+Guidelines:
+- Identify all visible food items and estimate portion sizes
+- Provide sodium estimates in milligrams (mg)
+- Be conservative (round up slightly) since CHF patients need to avoid exceeding limits
+- Flag high-sodium items clearly
+- Common high-sodium items: canned soups (800-1200mg), deli meats (500-900mg per serving), cheese (200-400mg), bread (150-200mg per slice), condiments (200-600mg)
+- Common lower-sodium items: fresh fruits/vegetables (<50mg), plain meat/poultry (75-100mg), eggs (70mg)
+- Always respond in the exact JSON format requested`,
+              },
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:${input.mimeType};base64,${input.imageBase64}`,
+                      detail: 'high',
+                    },
+                  },
+                  {
+                    type: 'text',
+                    text: `Analyze this meal photo and estimate the sodium content. Respond ONLY with valid JSON in this exact format:
+{
+  "foods": [
+    { "name": "food item name", "portion": "estimated portion", "sodiumMg": 250 }
+  ],
+  "totalSodiumMg": 850,
+  "confidence": "high|medium|low",
+  "notes": "brief note about accuracy or high-sodium items to watch",
+  "highSodiumWarning": true
+}
+
+If you cannot identify the food clearly, set confidence to "low" and provide your best estimate.`,
+                  },
+                ],
+              },
+            ],
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'meal_analysis',
+                strict: true,
+                schema: {
+                  type: 'object',
+                  properties: {
+                    foods: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          name: { type: 'string' },
+                          portion: { type: 'string' },
+                          sodiumMg: { type: 'number' },
+                        },
+                        required: ['name', 'portion', 'sodiumMg'],
+                        additionalProperties: false,
+                      },
+                    },
+                    totalSodiumMg: { type: 'number' },
+                    confidence: { type: 'string' },
+                    notes: { type: 'string' },
+                    highSodiumWarning: { type: 'boolean' },
+                  },
+                  required: ['foods', 'totalSodiumMg', 'confidence', 'notes', 'highSodiumWarning'],
+                  additionalProperties: false,
+                },
+              },
+            },
+          });
+
+          const rawContent = response.choices?.[0]?.message?.content;
+          if (typeof rawContent === 'string') {
+            const parsed = JSON.parse(rawContent);
+            return {
+              success: true as const,
+              foods: parsed.foods as Array<{ name: string; portion: string; sodiumMg: number }>,
+              totalSodiumMg: parsed.totalSodiumMg as number,
+              confidence: parsed.confidence as string,
+              notes: parsed.notes as string,
+              highSodiumWarning: parsed.highSodiumWarning as boolean,
+            };
+          }
+          return { success: false as const, error: 'Could not parse meal analysis' };
+        } catch (error) {
+          console.error('Meal analysis failed:', error);
+          return { success: false as const, error: 'Meal analysis failed. Please try again.' };
+        }
+      }),
+
     // ===== LLM: DOCTOR SUMMARY =====
     generateSummary: publicProcedure
       .input(z.object({

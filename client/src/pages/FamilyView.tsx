@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { useSupabaseAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { usePatient, useDailyLogs, useAlerts, useFamilyAccess } from '@/hooks/useCareData';
 import { getSeverityLabel, getSeverityColor } from '@/lib/alertEngine';
 import type { Severity } from '@/lib/alertEngine';
@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 
 export default function FamilyView() {
   const [, setLocation] = useLocation();
-  const { isAuthenticated } = useSupabaseAuth();
+  const { isAuthenticated } = useAuth();
   const { patient, loading: patientLoading } = usePatient();
   const { logs } = useDailyLogs(patient?.id, 7);
   const { alerts } = useAlerts(patient?.id, 10);

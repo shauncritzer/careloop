@@ -14,6 +14,9 @@ import {
   Utensils, Moon, Wind, Brain, Pill, ChevronRight
 } from 'lucide-react';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
+import MealScanner from '@/components/MealScanner';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Camera } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface FormData {
@@ -79,6 +82,7 @@ export default function DailyCheckIn() {
   const [form, setForm] = useState<FormData>(defaultForm);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ severity: Severity; messages: string[]; recommendations: string[] } | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
 
   const updateField = useCallback((field: keyof FormData, value: string | boolean) => {
     setForm((prev: FormData) => ({ ...prev, [field]: value }));
@@ -441,9 +445,21 @@ export default function DailyCheckIn() {
 
             <Card className="shadow-sm">
               <CardContent className="pt-5 pb-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <Utensils className="w-5 h-5 text-orange-500" />
-                  <Label className="text-lg font-semibold">Sodium Intake (mg)</Label>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Utensils className="w-5 h-5 text-orange-500" />
+                    <Label className="text-lg font-semibold">Sodium Intake (mg)</Label>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 border-teal-200 text-teal-700 hover:bg-teal-50 text-sm font-medium"
+                    onClick={() => setShowScanner(true)}
+                  >
+                    <Camera className="w-4 h-4" />
+                    Scan Meal
+                  </Button>
                 </div>
                 <Input
                   type="number"
@@ -459,7 +475,7 @@ export default function DailyCheckIn() {
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground mt-1 text-center">
-                  Tip: Check nutrition labels. Most CHF patients aim for under 1500-2000mg/day.
+                  Tip: Tap "Scan Meal" to use AI to estimate sodium from a photo.
                 </p>
               </CardContent>
             </Card>
@@ -470,6 +486,22 @@ export default function DailyCheckIn() {
                 Your doctor can help set specific limits.
               </p>
             </div>
+
+            {/* Meal Scanner Dialog */}
+            <Dialog open={showScanner} onOpenChange={setShowScanner}>
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <MealScanner
+                  onSodiumLogged={(mg) => {
+                    const current = form.sodium_mg ? parseInt(form.sodium_mg) : 0;
+                    updateField('sodium_mg', String(current + mg));
+                    setShowScanner(false);
+                  }}
+                  dailySodiumSoFar={form.sodium_mg ? parseInt(form.sodium_mg) : 0}
+                  sodiumLimitMg={patient.sodiumLimitMg ?? undefined}
+                  onClose={() => setShowScanner(false)}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
         )}
 

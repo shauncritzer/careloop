@@ -22,7 +22,7 @@ async function hashPin(pin: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [caregiverName, setCaregiverName] = useState<string | null>(null);
@@ -106,8 +106,8 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useSupabaseAuth() {
+export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useSupabaseAuth must be used within SupabaseAuthProvider');
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }

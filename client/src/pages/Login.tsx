@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useSupabaseAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Heart, Loader2, Eye, EyeOff } from 'lucide-react';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 
 export default function Login() {
-  const { isAuthenticated, loading, signInWithPin, isSetUp } = useSupabaseAuth();
+  const { isAuthenticated, loading, signInWithPin, isSetUp } = useAuth();
   const [, setLocation] = useLocation();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
