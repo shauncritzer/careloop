@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { usePatient, useSavePatient } from '@/hooks/useSupabaseData';
+import { usePatient, useSavePatient } from '@/hooks/useCareData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,32 +17,32 @@ export default function PatientProfile() {
 
   const [form, setForm] = useState({
     name: '',
-    date_of_birth: '',
-    baseline_weight_lbs: '',
-    baseline_sys_bp: '',
-    baseline_dia_bp: '',
-    baseline_pulse: '',
-    baseline_spo2: '',
-    fluid_limit_oz: '',
-    sodium_limit_mg: '',
-    caregiver_name: '',
-    family_contact_name: '',
+    dateOfBirth: '',
+    baselineWeightLbs: '',
+    baselineSysBp: '',
+    baselineDiaBp: '',
+    baselinePulse: '',
+    baselineSpo2: '',
+    fluidLimitOz: '',
+    sodiumLimitMg: '',
+    caregiverName: '',
+    familyContactName: '',
   });
 
   useEffect(() => {
     if (patient) {
       setForm({
         name: patient.name || '',
-        date_of_birth: patient.date_of_birth || '',
-        baseline_weight_lbs: patient.baseline_weight_lbs?.toString() || '',
-        baseline_sys_bp: patient.baseline_sys_bp?.toString() || '',
-        baseline_dia_bp: patient.baseline_dia_bp?.toString() || '',
-        baseline_pulse: patient.baseline_pulse?.toString() || '',
-        baseline_spo2: patient.baseline_spo2?.toString() || '',
-        fluid_limit_oz: patient.fluid_limit_oz?.toString() || '',
-        sodium_limit_mg: patient.sodium_limit_mg?.toString() || '',
-        caregiver_name: patient.caregiver_name || '',
-        family_contact_name: patient.family_contact_name || '',
+        dateOfBirth: patient.dateOfBirth || '',
+        baselineWeightLbs: patient.baselineWeightLbs?.toString() || '',
+        baselineSysBp: patient.baselineSysBp?.toString() || '',
+        baselineDiaBp: patient.baselineDiaBp?.toString() || '',
+        baselinePulse: patient.baselinePulse?.toString() || '',
+        baselineSpo2: patient.baselineSpo2?.toString() || '',
+        fluidLimitOz: patient.fluidLimitOz?.toString() || '',
+        sodiumLimitMg: patient.sodiumLimitMg?.toString() || '',
+        caregiverName: patient.caregiverName || '',
+        familyContactName: patient.familyContactName || '',
       });
     }
   }, [patient]);
@@ -57,16 +57,16 @@ export default function PatientProfile() {
 
     const { error } = await savePatient({
       name: form.name,
-      date_of_birth: form.date_of_birth || null,
-      baseline_weight_lbs: form.baseline_weight_lbs ? parseFloat(form.baseline_weight_lbs) : null,
-      baseline_sys_bp: form.baseline_sys_bp ? parseInt(form.baseline_sys_bp) : null,
-      baseline_dia_bp: form.baseline_dia_bp ? parseInt(form.baseline_dia_bp) : null,
-      baseline_pulse: form.baseline_pulse ? parseInt(form.baseline_pulse) : null,
-      baseline_spo2: form.baseline_spo2 ? parseInt(form.baseline_spo2) : null,
-      fluid_limit_oz: form.fluid_limit_oz ? parseFloat(form.fluid_limit_oz) : null,
-      sodium_limit_mg: form.sodium_limit_mg ? parseInt(form.sodium_limit_mg) : null,
-      caregiver_name: form.caregiver_name || null,
-      family_contact_name: form.family_contact_name || null,
+      dateOfBirth: form.dateOfBirth || undefined,
+      baselineWeightLbs: form.baselineWeightLbs ? parseFloat(form.baselineWeightLbs) : undefined,
+      baselineSysBp: form.baselineSysBp ? parseInt(form.baselineSysBp) : undefined,
+      baselineDiaBp: form.baselineDiaBp ? parseInt(form.baselineDiaBp) : undefined,
+      baselinePulse: form.baselinePulse ? parseInt(form.baselinePulse) : undefined,
+      baselineSpo2: form.baselineSpo2 ? parseInt(form.baselineSpo2) : undefined,
+      fluidLimitOz: form.fluidLimitOz ? parseFloat(form.fluidLimitOz) : undefined,
+      sodiumLimitMg: form.sodiumLimitMg ? parseInt(form.sodiumLimitMg) : undefined,
+      caregiverName: form.caregiverName || undefined,
+      familyContactName: form.familyContactName || undefined,
     });
 
     if (error) {
@@ -131,8 +131,8 @@ export default function PatientProfile() {
                 <Label className="text-base font-medium">Date of Birth</Label>
                 <Input
                   type="date"
-                  value={form.date_of_birth}
-                  onChange={(e) => updateField('date_of_birth', e.target.value)}
+                  value={form.dateOfBirth}
+                  onChange={(e) => updateField('dateOfBirth', e.target.value)}
                   className="h-12 text-base"
                 />
               </div>
@@ -154,8 +154,8 @@ export default function PatientProfile() {
                   <Input
                     type="number"
                     step="0.1"
-                    value={form.baseline_weight_lbs}
-                    onChange={(e) => updateField('baseline_weight_lbs', e.target.value)}
+                    value={form.baselineWeightLbs}
+                    onChange={(e) => updateField('baselineWeightLbs', e.target.value)}
                     placeholder="e.g. 185"
                     className="h-12 text-base"
                   />
@@ -165,8 +165,8 @@ export default function PatientProfile() {
                   <Label className="text-base font-medium">SpO2 (%)</Label>
                   <Input
                     type="number"
-                    value={form.baseline_spo2}
-                    onChange={(e) => updateField('baseline_spo2', e.target.value)}
+                    value={form.baselineSpo2}
+                    onChange={(e) => updateField('baselineSpo2', e.target.value)}
                     placeholder="e.g. 96"
                     className="h-12 text-base"
                   />
@@ -177,8 +177,8 @@ export default function PatientProfile() {
                   <Label className="text-base font-medium">Systolic BP (top number)</Label>
                   <Input
                     type="number"
-                    value={form.baseline_sys_bp}
-                    onChange={(e) => updateField('baseline_sys_bp', e.target.value)}
+                    value={form.baselineSysBp}
+                    onChange={(e) => updateField('baselineSysBp', e.target.value)}
                     placeholder="e.g. 130"
                     className="h-12 text-base"
                   />
@@ -187,8 +187,8 @@ export default function PatientProfile() {
                   <Label className="text-base font-medium">Diastolic BP (bottom number)</Label>
                   <Input
                     type="number"
-                    value={form.baseline_dia_bp}
-                    onChange={(e) => updateField('baseline_dia_bp', e.target.value)}
+                    value={form.baselineDiaBp}
+                    onChange={(e) => updateField('baselineDiaBp', e.target.value)}
                     placeholder="e.g. 80"
                     className="h-12 text-base"
                   />
@@ -198,8 +198,8 @@ export default function PatientProfile() {
                 <Label className="text-base font-medium">Resting Pulse (bpm)</Label>
                 <Input
                   type="number"
-                  value={form.baseline_pulse}
-                  onChange={(e) => updateField('baseline_pulse', e.target.value)}
+                  value={form.baselinePulse}
+                  onChange={(e) => updateField('baselinePulse', e.target.value)}
                   placeholder="e.g. 72"
                   className="h-12 text-base"
                 />
@@ -222,8 +222,8 @@ export default function PatientProfile() {
                   <Input
                     type="number"
                     step="1"
-                    value={form.fluid_limit_oz}
-                    onChange={(e) => updateField('fluid_limit_oz', e.target.value)}
+                    value={form.fluidLimitOz}
+                    onChange={(e) => updateField('fluidLimitOz', e.target.value)}
                     placeholder="e.g. 64"
                     className="h-12 text-base"
                   />
@@ -234,8 +234,8 @@ export default function PatientProfile() {
                   <Input
                     type="number"
                     step="100"
-                    value={form.sodium_limit_mg}
-                    onChange={(e) => updateField('sodium_limit_mg', e.target.value)}
+                    value={form.sodiumLimitMg}
+                    onChange={(e) => updateField('sodiumLimitMg', e.target.value)}
                     placeholder="e.g. 1500"
                     className="h-12 text-base"
                   />
@@ -260,8 +260,8 @@ export default function PatientProfile() {
               <div className="space-y-2">
                 <Label className="text-base font-medium">Caregiver Name</Label>
                 <Input
-                  value={form.caregiver_name}
-                  onChange={(e) => updateField('caregiver_name', e.target.value)}
+                  value={form.caregiverName}
+                  onChange={(e) => updateField('caregiverName', e.target.value)}
                   placeholder="Primary caregiver"
                   className="h-12 text-base"
                 />
@@ -269,8 +269,8 @@ export default function PatientProfile() {
               <div className="space-y-2">
                 <Label className="text-base font-medium">Family Contact Name</Label>
                 <Input
-                  value={form.family_contact_name}
-                  onChange={(e) => updateField('family_contact_name', e.target.value)}
+                  value={form.familyContactName}
+                  onChange={(e) => updateField('familyContactName', e.target.value)}
                   placeholder="Emergency family contact"
                   className="h-12 text-base"
                 />

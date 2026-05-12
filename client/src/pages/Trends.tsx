@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useLocation } from 'wouter';
-import { usePatient, useDailyLogs } from '@/hooks/useSupabaseData';
+import { usePatient, useDailyLogs } from '@/hooks/useCareData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Loader2, TrendingUp } from 'lucide-react';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
@@ -15,19 +15,19 @@ export default function Trends() {
 
   const chartData = useMemo(() => {
     return logs.map(log => ({
-      date: new Date(log.log_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      weight: log.weight_lbs,
-      systolic: log.systolic_bp,
-      diastolic: log.diastolic_bp,
-      pulse: log.pulse_bpm,
+      date: new Date(log.logDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      weight: log.weightLbs,
+      systolic: log.systolicBp,
+      diastolic: log.diastolicBp,
+      pulse: log.pulseBpm,
       spo2: log.spo2,
-      fluid: log.fluid_intake_oz,
-      sodium: log.sodium_mg,
+      fluid: log.fluidIntakeOz,
+      sodium: log.sodiumMg,
       symptoms: [
-        log.breathing_worse, log.swelling, log.confusion, log.dizziness,
-        log.chest_pain, log.fall_or_near_fall, log.poor_appetite, log.poor_sleep
+        log.breathingWorse, log.swelling, log.confusion, log.dizziness,
+        log.chestPain, log.fallOrNearFall, log.poorAppetite, log.poorSleep
       ].filter(Boolean).length,
-      medsTaken: !log.missed_meds,
+      medsTaken: !log.missedMeds,
     }));
   }, [logs]);
 
@@ -81,8 +81,8 @@ export default function Trends() {
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                     <YAxis domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    {patient?.baseline_weight_lbs && (
-                      <ReferenceLine y={patient.baseline_weight_lbs} stroke="#94a3b8" strokeDasharray="5 5" label={{ value: 'Baseline', fontSize: 11, fill: '#94a3b8' }} />
+                    {patient?.baselineWeightLbs && (
+                      <ReferenceLine y={patient.baselineWeightLbs} stroke="#94a3b8" strokeDasharray="5 5" label={{ value: 'Baseline', fontSize: 11, fill: '#94a3b8' }} />
                     )}
                     <Line type="monotone" dataKey="weight" stroke="#0d9488" strokeWidth={3} dot={{ r: 5, fill: '#0d9488' }} name="Weight" connectNulls />
                   </LineChart>
@@ -134,8 +134,8 @@ export default function Trends() {
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg font-serif">Fluid Intake (oz)</CardTitle>
-                {patient?.fluid_limit_oz && (
-                  <p className="text-sm text-muted-foreground">Daily limit: {patient.fluid_limit_oz} oz</p>
+                {patient?.fluidLimitOz && (
+                  <p className="text-sm text-muted-foreground">Daily limit: {patient.fluidLimitOz} oz</p>
                 )}
               </CardHeader>
               <CardContent>
@@ -145,8 +145,8 @@ export default function Trends() {
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    {patient?.fluid_limit_oz && (
-                      <ReferenceLine y={patient.fluid_limit_oz} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'Limit', fontSize: 11, fill: '#ef4444' }} />
+                    {patient?.fluidLimitOz && (
+                      <ReferenceLine y={patient.fluidLimitOz} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'Limit', fontSize: 11, fill: '#ef4444' }} />
                     )}
                     <Bar dataKey="fluid" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Fluid (oz)" />
                   </BarChart>
@@ -158,8 +158,8 @@ export default function Trends() {
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle className="text-lg font-serif">Sodium Intake (mg)</CardTitle>
-                {patient?.sodium_limit_mg && (
-                  <p className="text-sm text-muted-foreground">Daily limit: {patient.sodium_limit_mg} mg</p>
+                {patient?.sodiumLimitMg && (
+                  <p className="text-sm text-muted-foreground">Daily limit: {patient.sodiumLimitMg} mg</p>
                 )}
               </CardHeader>
               <CardContent>
@@ -169,8 +169,8 @@ export default function Trends() {
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip />
-                    {patient?.sodium_limit_mg && (
-                      <ReferenceLine y={patient.sodium_limit_mg} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'Limit', fontSize: 11, fill: '#ef4444' }} />
+                    {patient?.sodiumLimitMg && (
+                      <ReferenceLine y={patient.sodiumLimitMg} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'Limit', fontSize: 11, fill: '#ef4444' }} />
                     )}
                     <Bar dataKey="sodium" fill="#f97316" radius={[4, 4, 0, 0]} name="Sodium (mg)" />
                   </BarChart>

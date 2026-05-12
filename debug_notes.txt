@@ -1,0 +1,14 @@
+Debug findings:
+- The deployed site at caregiverapp-chchzyrv.manus.space actually loads fine from the sandbox browser
+- It shows the Setup page correctly: "Welcome to CareLoop" with name input
+- The issue the user sees ("Loading CareLoop..." spinner) is the loading state in Home.tsx
+- This happens when: authLoading is true OR patientLoading is true
+- The likely cause: on the deployed site, the Supabase auth.getSession() call may be hanging or timing out
+- This could be because the Supabase env vars aren't properly set in the deployed environment
+- OR the Supabase client is failing silently and never resolving the loading state
+- Need to check: is the user hitting the root "/" path which goes to Home.tsx (which has the loading spinner)?
+- The Setup page redirects from "/" when no PIN is set up, but Home.tsx shows "Loading CareLoop..." while checking auth
+- The issue is likely that the user previously set up a PIN (in localStorage), so they go to Home.tsx which tries to load patient data from Supabase, and that call hangs
+
+Key issue: The Supabase getSession() or the patient query is hanging on the deployed site.
+The user may have a stale localStorage state from previous testing.

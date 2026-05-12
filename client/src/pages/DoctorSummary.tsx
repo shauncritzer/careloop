@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { usePatient, useDailyLogs, useAlerts } from '@/hooks/useSupabaseData';
+import { usePatient, useDailyLogs, useAlerts } from '@/hooks/useCareData';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -106,7 +106,7 @@ export default function DoctorSummary() {
   const basicSummary = useMemo(() => {
     if (!patient) return '';
     const recentAlerts = alerts.filter(a => {
-      const d = new Date(a.created_at);
+      const d = new Date(a.createdAt);
       const weekAgo = new Date();
       weekAgo.setDate(weekAgo.getDate() - 7);
       return d >= weekAgo;

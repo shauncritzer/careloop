@@ -8,6 +8,13 @@
       "when": 1775238179224,
       "tag": "0000_first_zombie",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1777489029761,
+      "tag": "0001_magical_eternity",
+      "breakpoints": true
     }
   ]
 }

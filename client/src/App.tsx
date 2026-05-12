@@ -4,11 +4,10 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { SupabaseAuthProvider } from "./contexts/SupabaseAuthContext";
+import { SupabaseAuthProvider } from "./contexts/AuthContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Setup from "./pages/Setup";
-import Signup from "./pages/Signup";
 import PatientProfile from "./pages/PatientProfile";
 import DailyCheckIn from "./pages/DailyCheckIn";
 import Trends from "./pages/Trends";
@@ -22,7 +21,6 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
       <Route path="/setup" component={Setup} />
-      <Route path="/signup" component={Signup} />
       <Route path="/patient-profile" component={PatientProfile} />
       <Route path="/check-in" component={DailyCheckIn} />
       <Route path="/trends" component={Trends} />

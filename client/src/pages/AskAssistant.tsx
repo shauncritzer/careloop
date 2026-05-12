@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { usePatient, useDailyLogs } from '@/hooks/useSupabaseData';
+import { usePatient, useDailyLogs } from '@/hooks/useCareData';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -51,22 +51,22 @@ export default function AskAssistant() {
     try {
       // Build context from recent logs
       const recentData = logs.slice(-3).map(l => ({
-        date: l.log_date,
-        weight: l.weight_lbs,
-        bp: l.systolic_bp && l.diastolic_bp ? `${l.systolic_bp}/${l.diastolic_bp}` : null,
-        pulse: l.pulse_bpm,
+        date: l.logDate,
+        weight: l.weightLbs,
+        bp: l.systolicBp && l.diastolicBp ? `${l.systolicBp}/${l.diastolicBp}` : null,
+        pulse: l.pulseBpm,
         spo2: l.spo2,
-        fluid_oz: l.fluid_intake_oz,
-        sodium_mg: l.sodium_mg,
+        fluid_oz: l.fluidIntakeOz,
+        sodium_mg: l.sodiumMg,
         symptoms: [
-          l.breathing_worse && 'breathing worse',
+          l.breathingWorse && 'breathing worse',
           l.swelling && 'swelling',
           l.confusion && 'confusion',
           l.dizziness && 'dizziness',
-          l.chest_pain && 'chest pain',
-          l.missed_meds && 'missed meds',
-          l.poor_appetite && 'poor appetite',
-          l.poor_sleep && 'poor sleep',
+          l.chestPain && 'chest pain',
+          l.missedMeds && 'missed meds',
+          l.poorAppetite && 'poor appetite',
+          l.poorSleep && 'poor sleep',
         ].filter(Boolean).join(', ') || 'none',
       }));
 

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-import { usePatient, useDailyLogs, useAlerts } from '@/hooks/useSupabaseData';
+import { useSupabaseAuth } from '@/contexts/AuthContext';
+import { usePatient, useDailyLogs, useAlerts } from '@/hooks/useCareData';
 import { getSeverityLabel, getSeverityColor } from '@/lib/alertEngine';
 import type { Severity } from '@/lib/alertEngine';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import {
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 
 export default function Home() {
-  const { user, loading: authLoading, isAuthenticated, signOut } = useSupabaseAuth();
+  const { loading: authLoading, isAuthenticated, signOut } = useSupabaseAuth();
   const [, setLocation] = useLocation();
   const { patient, loading: patientLoading } = usePatient();
   const { logs } = useDailyLogs(patient?.id, 7);
@@ -67,7 +67,7 @@ export default function Home() {
   }
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-  const todayLog = logs.find(l => l.log_date === new Date().toISOString().split('T')[0]);
+  const todayLog = logs.find(l => l.logDate === new Date().toISOString().split('T')[0]);
   const latestAlert = alerts[0];
   const currentSeverity: Severity = (latestAlert?.severity as Severity) || 'green';
   const colors = getSeverityColor(currentSeverity);
@@ -119,7 +119,7 @@ export default function Home() {
                   {getSeverityLabel(currentSeverity)}
                 </h2>
                 <p className={`text-sm mt-1 ${colors.text} opacity-80`}>
-                  {latestAlert ? `Last check-in: ${new Date(latestAlert.created_at).toLocaleDateString()}` : 'No check-ins yet'}
+                  {latestAlert ? `Last check-in: ${new Date(latestAlert.createdAt).toLocaleDateString()}` : 'No check-ins yet'}
                 </p>
               </div>
             </div>
@@ -211,7 +211,7 @@ export default function Home() {
                           {alert.message.split(' | ')[0]}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(alert.created_at).toLocaleDateString()}
+                          {new Date(alert.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                     </div>

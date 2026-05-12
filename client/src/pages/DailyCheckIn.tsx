@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { usePatient, useDailyLogs, useSaveDailyLog, useSaveAlert, getBaselineData, logToCheckInData } from '@/hooks/useSupabaseData';
+import { usePatient, useDailyLogs, useSaveDailyLog, useSaveAlert, getBaselineData, logToCheckInData } from '@/hooks/useCareData';
 import { evaluateCheckIn, getSeverityLabel, getSeverityColor } from '@/lib/alertEngine';
 import type { Severity, CheckInData } from '@/lib/alertEngine';
 import { Button } from '@/components/ui/button';
@@ -102,23 +102,23 @@ export default function DailyCheckIn() {
     setSubmitting(true);
 
     const logData = {
-      patient_id: patient.id,
-      weight_lbs: form.weight_lbs ? parseFloat(form.weight_lbs) : null,
-      systolic_bp: form.systolic_bp ? parseInt(form.systolic_bp) : null,
-      diastolic_bp: form.diastolic_bp ? parseInt(form.diastolic_bp) : null,
-      pulse_bpm: form.pulse_bpm ? parseInt(form.pulse_bpm) : null,
+      patientId: patient.id,
+      weightLbs: form.weight_lbs ? parseFloat(form.weight_lbs) : null,
+      systolicBp: form.systolic_bp ? parseInt(form.systolic_bp) : null,
+      diastolicBp: form.diastolic_bp ? parseInt(form.diastolic_bp) : null,
+      pulseBpm: form.pulse_bpm ? parseInt(form.pulse_bpm) : null,
       spo2: form.spo2 ? parseInt(form.spo2) : null,
-      fluid_intake_oz: form.fluid_intake_oz ? parseFloat(form.fluid_intake_oz) : null,
-      sodium_mg: form.sodium_mg ? parseInt(form.sodium_mg) : null,
-      breathing_worse: form.breathing_worse,
+      fluidIntakeOz: form.fluid_intake_oz ? parseFloat(form.fluid_intake_oz) : null,
+      sodiumMg: form.sodium_mg ? parseInt(form.sodium_mg) : null,
+      breathingWorse: form.breathing_worse,
       swelling: form.swelling,
       confusion: form.confusion,
       dizziness: form.dizziness,
-      chest_pain: form.chest_pain,
-      missed_meds: form.missed_meds,
-      fall_or_near_fall: form.fall_or_near_fall,
-      poor_appetite: form.poor_appetite,
-      poor_sleep: form.poor_sleep,
+      chestPain: form.chest_pain,
+      missedMeds: form.missed_meds,
+      fallOrNearFall: form.fall_or_near_fall,
+      poorAppetite: form.poor_appetite,
+      poorSleep: form.poor_sleep,
       notes: form.notes || null,
     };
 
@@ -131,22 +131,22 @@ export default function DailyCheckIn() {
 
     // Run alert engine
     const checkInData: CheckInData = {
-      weight_lbs: logData.weight_lbs,
-      systolic_bp: logData.systolic_bp,
-      diastolic_bp: logData.diastolic_bp,
-      pulse_bpm: logData.pulse_bpm,
+      weight_lbs: logData.weightLbs,
+      systolic_bp: logData.systolicBp,
+      diastolic_bp: logData.diastolicBp,
+      pulse_bpm: logData.pulseBpm,
       spo2: logData.spo2,
-      fluid_intake_oz: logData.fluid_intake_oz,
-      sodium_mg: logData.sodium_mg,
-      breathing_worse: logData.breathing_worse,
+      fluid_intake_oz: logData.fluidIntakeOz,
+      sodium_mg: logData.sodiumMg,
+      breathing_worse: logData.breathingWorse,
       swelling: logData.swelling,
       confusion: logData.confusion,
       dizziness: logData.dizziness,
-      chest_pain: logData.chest_pain,
-      missed_meds: logData.missed_meds,
-      fall_or_near_fall: logData.fall_or_near_fall,
-      poor_appetite: logData.poor_appetite,
-      poor_sleep: logData.poor_sleep,
+      chest_pain: logData.chestPain,
+      missed_meds: logData.missedMeds,
+      fall_or_near_fall: logData.fallOrNearFall,
+      poor_appetite: logData.poorAppetite,
+      poor_sleep: logData.poorSleep,
       notes: logData.notes,
     };
 
@@ -428,9 +428,9 @@ export default function DailyCheckIn() {
                   placeholder="Estimated ounces today"
                   className="h-14 text-xl text-center font-semibold"
                 />
-                {patient.fluid_limit_oz && (
+                {patient.fluidLimitOz && (
                   <p className="text-sm text-muted-foreground mt-2 text-center">
-                    Daily limit: {patient.fluid_limit_oz} oz
+                    Daily limit: {patient.fluidLimitOz} oz
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground mt-1 text-center">
@@ -453,9 +453,9 @@ export default function DailyCheckIn() {
                   placeholder="Estimated mg today"
                   className="h-14 text-xl text-center font-semibold"
                 />
-                {patient.sodium_limit_mg && (
+                {patient.sodiumLimitMg && (
                   <p className="text-sm text-muted-foreground mt-2 text-center">
-                    Daily limit: {patient.sodium_limit_mg} mg
+                    Daily limit: {patient.sodiumLimitMg} mg
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground mt-1 text-center">

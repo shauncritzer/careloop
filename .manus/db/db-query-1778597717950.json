@@ -1,0 +1,37 @@
+{
+  "query": "SHOW TABLES LIKE 'patients'; SHOW TABLES LIKE 'daily_logs'; SHOW TABLES LIKE 'alerts'; SHOW TABLES LIKE 'family_access'; SHOW TABLES LIKE 'app_settings';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3q3JgbnADWj9PiL.7108fd1f9db8 --database ChChzyrvaJAwtQ9zYQKJyP --execute SHOW TABLES LIKE 'patients'; SHOW TABLES LIKE 'daily_logs'; SHOW TABLES LIKE 'alerts'; SHOW TABLES LIKE 'family_access'; SHOW TABLES LIKE 'app_settings';",
+  "rows": [
+    {
+      "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (patients)": "patients"
+    },
+    {
+      "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (patients)": "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (daily_logs)"
+    },
+    {
+      "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (patients)": "daily_logs"
+    },
+    {
+      "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (patients)": "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (alerts)"
+    },
+    {
+      "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (patients)": "alerts"
+    },
+    {
+      "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (patients)": "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (family_access)"
+    },
+    {
+      "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (patients)": "family_access"
+    },
+    {
+      "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (patients)": "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (app_settings)"
+    },
+    {
+      "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (patients)": "app_settings"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_ChChzyrvaJAwtQ9zYQKJyP (patients)\npatients\nTables_in_ChChzyrvaJAwtQ9zYQKJyP (daily_logs)\ndaily_logs\nTables_in_ChChzyrvaJAwtQ9zYQKJyP (alerts)\nalerts\nTables_in_ChChzyrvaJAwtQ9zYQKJyP (family_access)\nfamily_access\nTables_in_ChChzyrvaJAwtQ9zYQKJyP (app_settings)\napp_settings\n",
+  "stderr": "",
+  "execution_time_ms": 940
+}
