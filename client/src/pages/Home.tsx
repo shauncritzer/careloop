@@ -1,32 +1,23 @@
-import { useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/contexts/AuthContext';
 import { usePatient, useDailyLogs, useAlerts } from '@/hooks/useCareData';
 import { getSeverityLabel, getSeverityColor } from '@/lib/alertEngine';
 import type { Severity } from '@/lib/alertEngine';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Heart, ClipboardCheck, TrendingUp, FileText, Users, LogOut, Loader2,
+  Heart, ClipboardCheck, TrendingUp, FileText, Users, Loader2,
   AlertTriangle, CheckCircle2, XCircle, Calendar, ChevronRight, Settings,
-  MessageCircle
+  MessageCircle, Camera
 } from 'lucide-react';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 
 export default function Home() {
-  const { loading: authLoading, isAuthenticated, signOut } = useAuth();
   const [, setLocation] = useLocation();
   const { patient, loading: patientLoading } = usePatient();
   const { logs } = useDailyLogs(patient?.id, 7);
   const { alerts } = useAlerts(patient?.id, 5);
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      setLocation('/login');
-    }
-  }, [authLoading, isAuthenticated, setLocation]);
-
-  if (authLoading || patientLoading) {
+  if (patientLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -37,8 +28,7 @@ export default function Home() {
     );
   }
 
-  if (!isAuthenticated) return null;
-
+  // First-time setup — no patient profile yet
   if (!patient) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -82,14 +72,9 @@ export default function Home() {
             </div>
             <span className="text-xl font-serif font-semibold text-foreground">CareLoop</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setLocation('/patient-profile')} className="w-10 h-10" title="Patient Profile">
-              <Settings className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={signOut} className="w-10 h-10" title="Sign Out">
-              <LogOut className="w-5 h-5" />
-            </Button>
-          </div>
+          <Button variant="ghost" size="icon" onClick={() => setLocation('/patient-profile')} className="w-10 h-10" title="Patient Profile">
+            <Settings className="w-5 h-5" />
+          </Button>
         </div>
       </header>
 
@@ -147,6 +132,18 @@ export default function Home() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 gap-3">
+          {/* Scan Meal — prominent standalone feature */}
+          <button onClick={() => setLocation('/scan')} className="flex items-center gap-4 p-4 rounded-xl border-2 border-orange-200 bg-orange-50 hover:bg-orange-100 transition-colors min-h-[64px]">
+            <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+              <Camera className="w-6 h-6 text-orange-600" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-base font-semibold text-foreground">Scan a Meal</p>
+              <p className="text-sm text-muted-foreground">AI estimates sodium from a photo</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </button>
+
           <button onClick={() => setLocation('/ask')} className="flex items-center gap-4 p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors min-h-[64px]">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <MessageCircle className="w-6 h-6 text-primary" />

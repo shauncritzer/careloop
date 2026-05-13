@@ -6,27 +6,25 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Setup from "./pages/Setup";
 import PatientProfile from "./pages/PatientProfile";
 import DailyCheckIn from "./pages/DailyCheckIn";
 import Trends from "./pages/Trends";
 import DoctorSummary from "./pages/DoctorSummary";
 import FamilyView from "./pages/FamilyView";
 import AskAssistant from "./pages/AskAssistant";
+import ScanMeal from "./pages/ScanMeal";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
-      <Route path="/login" component={Login} />
-      <Route path="/setup" component={Setup} />
       <Route path="/patient-profile" component={PatientProfile} />
       <Route path="/check-in" component={DailyCheckIn} />
       <Route path="/trends" component={Trends} />
       <Route path="/doctor-summary" component={DoctorSummary} />
       <Route path="/family" component={FamilyView} />
       <Route path="/ask" component={AskAssistant} />
+      <Route path="/scan" component={ScanMeal} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

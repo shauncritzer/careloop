@@ -38,3 +38,11 @@
 - [x] Add running daily sodium total tracker showing remaining budget vs limit
 - [x] Scanned sodium auto-adds to sodium_mg field (cumulative across multiple scans)
 - [x] 31 tests passing, 0 TypeScript errors after integration
+
+## v3.2 — UX Simplification & Meal Scanner Standalone
+- [ ] Remove PIN auth entirely — app opens directly to dashboard (no login screen)
+- [ ] Remove Login.tsx, Setup.tsx, and AuthContext.tsx PIN logic
+- [ ] Update App.tsx routing to go straight to Home/PatientProfile setup
+- [ ] Add standalone MealScanner page at /scan accessible from main nav
+- [ ] Add "Scan Meal" card/button to Home dashboard quick actions
+- [ ] Research and compile purchase links for: Withings Body+, Withings BPM Connect, Kardia Mobile 6L, pulse oximeter
