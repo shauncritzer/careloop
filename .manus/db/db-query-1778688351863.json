@@ -1,0 +1,26 @@
+{
+  "query": "SELECT * FROM patients WHERE id = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3q3JgbnADWj9PiL.7108fd1f9db8 --database ChChzyrvaJAwtQ9zYQKJyP --execute SELECT * FROM patients WHERE id = 1;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Lawrence \"Larry\" Critzer",
+      "dateOfBirth": "1947-02-23",
+      "baselineWeightLbs": "176",
+      "baselineSysBp": "158",
+      "baselineDiaBp": "98",
+      "baselinePulse": "90",
+      "baselineSpo2": "94",
+      "fluidLimitOz": "64",
+      "sodiumLimitMg": "2000",
+      "caregiverName": "Shaun Critzer",
+      "familyContactName": "Priscilla Critzer",
+      "createdAt": "2026-05-12 15:47:29",
+      "updatedAt": "2026-05-13 16:05:47"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdateOfBirth\tbaselineWeightLbs\tbaselineSysBp\tbaselineDiaBp\tbaselinePulse\tbaselineSpo2\tfluidLimitOz\tsodiumLimitMg\tcaregiverName\tfamilyContactName\tcreatedAt\tupdatedAt\n1\tLawrence \"Larry\" Critzer\t1947-02-23\t176\t158\t98\t90\t94\t64\t2000\tShaun Critzer\tPriscilla Critzer\t2026-05-12 15:47:29\t2026-05-13 16:05:47\n",
+  "stderr": "",
+  "execution_time_ms": 268
+}

@@ -40,9 +40,19 @@
 - [x] 31 tests passing, 0 TypeScript errors after integration
 
 ## v3.2 — UX Simplification & Meal Scanner Standalone
-- [ ] Remove PIN auth entirely — app opens directly to dashboard (no login screen)
-- [ ] Remove Login.tsx, Setup.tsx, and AuthContext.tsx PIN logic
-- [ ] Update App.tsx routing to go straight to Home/PatientProfile setup
-- [ ] Add standalone MealScanner page at /scan accessible from main nav
-- [ ] Add "Scan Meal" card/button to Home dashboard quick actions
-- [ ] Research and compile purchase links for: Withings Body+, Withings BPM Connect, Kardia Mobile 6L, pulse oximeter
+- [x] Remove PIN auth entirely — app opens directly to dashboard (no login screen)
+- [x] Remove Login.tsx, Setup.tsx, and AuthContext.tsx PIN logic
+- [x] Update App.tsx routing to go straight to Home/PatientProfile setup
+- [x] Add standalone MealScanner page at /scan accessible from main nav
+- [x] Add "Scan Meal" card/button to Home dashboard quick actions
+- [x] Research and compile purchase links for: Withings Body+, Withings BPM Connect, Kardia Mobile 6L, pulse oximeter
+
+## v3.3 — Clinical Calibration (Larry's MyChart Data)
+- [x] Extract clinical data from MyChart (labs, echo, medications, diagnoses, discharge instructions)
+- [x] Create larry_clinical_data.md with full extracted clinical data
+- [x] Update patient profile in database: baseline weight 176 lbs, BP 158/98, pulse 90, SpO2 94, sodium 2000mg, fluid 64oz
+- [x] Calibrate alertEngine.ts with Larry's specific thresholds (BP 190/90 red, 170 yellow; pulse 130 rapid AFib; COPD SpO2 context)
+- [x] Update askAssistant LLM system prompt with Larry's full clinical context (meds, diagnoses, care team, thresholds)
+- [x] Update generateSummary LLM system prompt with Larry's clinical context
+- [x] Rename patient to Lawrence "Larry" Critzer in database
+- [x] Update caregiverName to Shaun Critzer in database

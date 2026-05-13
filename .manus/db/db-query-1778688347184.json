@@ -1,0 +1,9 @@
+{
+  "query": "UPDATE patients \nSET \n  name = 'Lawrence \"Larry\" Critzer',\n  dateOfBirth = '1947-02-23',\n  baselineWeightLbs = 176,\n  baselineSysBp = 158,\n  baselineDiaBp = 98,\n  baselinePulse = 90,\n  baselineSpo2 = 94,\n  fluidLimitOz = 64,\n  sodiumLimitMg = 2000,\n  caregiverName = 'Shaun Critzer',\n  familyContactName = 'Priscilla Critzer',\n  updatedAt = NOW()\nWHERE id = 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3q3JgbnADWj9PiL.7108fd1f9db8 --database ChChzyrvaJAwtQ9zYQKJyP --execute UPDATE patients \nSET \n  name = 'Lawrence \"Larry\" Critzer',\n  dateOfBirth = '1947-02-23',\n  baselineWeightLbs = 176,\n  baselineSysBp = 158,\n  baselineDiaBp = 98,\n  baselinePulse = 90,\n  baselineSpo2 = 94,\n  fluidLimitOz = 64,\n  sodiumLimitMg = 2000,\n  caregiverName = 'Shaun Critzer',\n  familyContactName = 'Priscilla Critzer',\n  updatedAt = NOW()\nWHERE id = 1;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 273
+}

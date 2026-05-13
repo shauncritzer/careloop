@@ -1,0 +1,26 @@
+{
+  "query": "SELECT * FROM patients LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3q3JgbnADWj9PiL.7108fd1f9db8 --database ChChzyrvaJAwtQ9zYQKJyP --execute SELECT * FROM patients LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Larry Critzer ",
+      "dateOfBirth": "1947-02-23",
+      "baselineWeightLbs": "155",
+      "baselineSysBp": "120",
+      "baselineDiaBp": "80",
+      "baselinePulse": "77",
+      "baselineSpo2": "95",
+      "fluidLimitOz": "64",
+      "sodiumLimitMg": "1500",
+      "caregiverName": "Robert Stokes",
+      "familyContactName": "Priscilla Critzer ",
+      "createdAt": "2026-05-12 15:47:29",
+      "updatedAt": "2026-05-12 15:47:29"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tdateOfBirth\tbaselineWeightLbs\tbaselineSysBp\tbaselineDiaBp\tbaselinePulse\tbaselineSpo2\tfluidLimitOz\tsodiumLimitMg\tcaregiverName\tfamilyContactName\tcreatedAt\tupdatedAt\n1\tLarry Critzer \t1947-02-23\t155\t120\t80\t77\t95\t64\t1500\tRobert Stokes\tPriscilla Critzer \t2026-05-12 15:47:29\t2026-05-12 15:47:29\n",
+  "stderr": "",
+  "execution_time_ms": 307
+}

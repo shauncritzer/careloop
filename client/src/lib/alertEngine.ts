@@ -1,7 +1,14 @@
 /**
  * CareLoop Alert Engine — CHF-focused
- * Evaluates daily check-in data and returns severity + messages + recommendations
- * RED = call doctor now, YELLOW = watch closely, GREEN = stable
+ * Calibrated for Lawrence "Larry" Critzer (DOB 2/23/1947)
+ * Clinical context:
+ *   - LVEF 35% (moderately reduced systolic dysfunction)
+ *   - Paroxysmal AFib (ILR-confirmed avg rate 90 bpm)
+ *   - Discharge weight baseline: 176 lbs (Apr 30, 2026)
+ *   - Baseline BP: ~158/98 mmHg (patient runs hypertensive)
+ *   - SpO2 threshold: <90% = supplemental O2 per cardiac rehab protocol
+ *   - COPD (Breztri inhaler) + stroke history (CVA 2021) + seizure disorder
+ *   - Medications: Lasix 40mg 2x/day, Eliquis 5mg 2x/day, Keppra 500mg 2x/day
  *
  * Language rules (enforced strictly):
  * NEVER say: "heart failure exacerbation", "in danger", "diagnose", "treat with"
@@ -68,12 +75,14 @@ export function evaluateCheckIn(
     escalate('red', 'Chest pain reported', 'Contact doctor or call 911 immediately');
   }
 
+  // Confusion is especially important for Larry — stroke history + CHF low output
   if (data.confusion) {
-    escalate('red', 'Confusion or disorientation reported', 'This may indicate low cardiac output — contact the care team');
+    escalate('red', 'Confusion or disorientation reported', 'This can occur with low cardiac output or stroke symptoms — contact the care team right away');
   }
 
+  // SpO2 < 90% = supplemental oxygen threshold (per Larry's cardiac rehab protocol)
   if (data.spo2 != null && data.spo2 < 90) {
-    escalate('red', `Oxygen level critically low at ${data.spo2}%`, 'Seek immediate medical attention');
+    escalate('red', `Oxygen level critically low at ${data.spo2}%`, 'Seek immediate medical attention — use supplemental oxygen if available');
   }
 
   // Weight gain > 3 lbs in one day
@@ -82,7 +91,7 @@ export function evaluateCheckIn(
     if (yesterday.weight_lbs != null) {
       const change = data.weight_lbs - yesterday.weight_lbs;
       if (change >= 3) {
-        escalate('red', `Weight up ${change.toFixed(1)} lbs since yesterday — possible rapid fluid retention`, 'Call doctor today — this level of weight gain may indicate fluid buildup');
+        escalate('red', `Weight up ${change.toFixed(1)} lbs since yesterday — possible rapid fluid retention`, 'Call cardiologist today — discharge instructions say to call for 3+ lbs in one day. This level of weight gain may indicate fluid buildup.');
       }
     }
   }
@@ -93,27 +102,30 @@ export function evaluateCheckIn(
     if (weekAgo.weight_lbs != null) {
       const weekChange = data.weight_lbs - weekAgo.weight_lbs;
       if (weekChange >= 5) {
-        escalate('red', `Weight up ${weekChange.toFixed(1)} lbs over the past week`, 'Call doctor — significant fluid retention over multiple days');
+        escalate('red', `Weight up ${weekChange.toFixed(1)} lbs over the past week`, 'Call cardiologist — discharge instructions say to call for 5+ lbs in one week. Significant fluid retention over multiple days.');
       }
     }
   }
 
+  // BP thresholds calibrated for Larry — he runs at ~158/98 baseline
   if (data.systolic_bp != null) {
-    if (data.systolic_bp > 180) {
-      escalate('red', `Blood pressure dangerously high at ${data.systolic_bp}/${data.diastolic_bp || '?'}`, 'Contact doctor immediately');
-    } else if (data.systolic_bp < 80) {
-      escalate('red', `Blood pressure dangerously low at ${data.systolic_bp}/${data.diastolic_bp || '?'}`, 'Contact doctor immediately — risk of fainting');
+    if (data.systolic_bp > 190) {
+      escalate('red', `Blood pressure dangerously high at ${data.systolic_bp}/${data.diastolic_bp || '?'}`, 'Contact doctor immediately — this is significantly above his usual range');
+    } else if (data.systolic_bp < 90) {
+      // Low BP is dangerous with Lasix + Losartan + Norvasc combination
+      escalate('red', `Blood pressure very low at ${data.systolic_bp}/${data.diastolic_bp || '?'}`, 'Contact doctor immediately — risk of fainting. His water pill (Lasix) and blood pressure medications can cause this.');
     }
   }
 
   if (data.fall_or_near_fall) {
-    escalate('red', 'Fall or near-fall reported', 'Check for injuries and notify the care team');
+    escalate('red', 'Fall or near-fall reported', 'Check for injuries and notify the care team — falls are a serious risk with his medications');
   }
 
   // === YELLOW ALERTS (Watch closely) ===
 
+  // SpO2 90-93% = yellow zone (Larry has COPD, so this range needs watching)
   if (data.spo2 != null && data.spo2 >= 90 && data.spo2 <= 93) {
-    escalate('yellow', `Oxygen level low at ${data.spo2}%`, 'Monitor closely — if it drops further, call the doctor');
+    escalate('yellow', `Oxygen level low at ${data.spo2}%`, 'Monitor closely — if it drops below 90%, seek immediate help. His COPD makes oxygen levels important to watch.');
   }
 
   // Weight gain 2-3 lbs in one day
@@ -122,32 +134,32 @@ export function evaluateCheckIn(
     if (yesterday.weight_lbs != null) {
       const change = data.weight_lbs - yesterday.weight_lbs;
       if (change >= 2 && change < 3) {
-        escalate('yellow', `Weight up ${change.toFixed(1)} lbs since yesterday`, 'Watch closely — if it continues rising, call the doctor');
+        escalate('yellow', `Weight up ${change.toFixed(1)} lbs since yesterday`, 'Watch closely — if it reaches 3 lbs in one day or 5 lbs in a week, call the cardiologist');
       }
     }
   }
 
   if (data.breathing_worse) {
-    escalate('yellow', 'Breathing difficulty reported', 'Monitor closely — elevate head while resting, call doctor if worsening');
+    escalate('yellow', 'Breathing difficulty reported', 'Monitor closely — elevate head while resting, use extra pillows. Call doctor if worsening or if breathing is difficult lying flat.');
   }
 
   if (data.swelling) {
-    escalate('yellow', 'Swelling noticed (ankles, legs, or abdomen)', 'May indicate fluid retention — mention at next appointment');
+    escalate('yellow', 'Swelling noticed (ankles, legs, or abdomen)', 'May indicate fluid retention — this is a key CHF warning sign. Mention to doctor and watch for rapid increase.');
   }
 
   if (data.dizziness) {
-    escalate('yellow', 'Dizziness reported', 'Be careful with standing up — sit or lie down if dizzy');
+    escalate('yellow', 'Dizziness reported', 'Be careful with standing up — sit or lie down if dizzy. His blood pressure medications can cause this.');
   }
 
   if (data.missed_meds) {
-    escalate('yellow', 'Medications were missed today', 'Try to take them as soon as possible — do not double up without asking the doctor');
+    escalate('yellow', 'Medications were missed today', 'Try to take them as soon as possible — do not double up without asking the doctor. Missing Lasix, Eliquis, or Keppra is especially important to address.');
   }
 
   // Fluid intake over limit
   if (data.fluid_intake_oz != null && baseline?.fluid_limit_oz != null) {
     if (data.fluid_intake_oz > baseline.fluid_limit_oz) {
-      const over = data.fluid_intake_oz - baseline.fluid_limit_oz;
-      escalate('yellow', `Fluid intake ${over} oz over the ${baseline.fluid_limit_oz} oz daily limit`, 'Try to reduce fluid intake for the rest of the day');
+      const over = (data.fluid_intake_oz - baseline.fluid_limit_oz).toFixed(1);
+      escalate('yellow', `Fluid intake ${over} oz over the ${baseline.fluid_limit_oz} oz daily limit`, 'Try to reduce fluid intake for the rest of the day — excess fluid is hard on his heart');
     }
   }
 
@@ -158,35 +170,41 @@ export function evaluateCheckIn(
     }
   }
 
-  if (data.systolic_bp != null && data.systolic_bp > 150 && data.systolic_bp <= 180) {
-    escalate('yellow', `Blood pressure elevated at ${data.systolic_bp}/${data.diastolic_bp || '?'}`, 'Rest and recheck in 30 minutes');
+  // BP elevated — Larry's baseline is ~158/98, so yellow starts at 170 (not 150)
+  if (data.systolic_bp != null && data.systolic_bp > 170 && data.systolic_bp <= 190) {
+    escalate('yellow', `Blood pressure elevated at ${data.systolic_bp}/${data.diastolic_bp || '?'}`, 'Rest and recheck in 30 minutes. His usual range is around 158/98, so this is above his normal.');
   }
 
-  if (data.systolic_bp != null && data.systolic_bp >= 80 && data.systolic_bp < 90) {
-    escalate('yellow', `Blood pressure low at ${data.systolic_bp}/${data.diastolic_bp || '?'}`, 'Rest and stay hydrated — recheck soon');
+  // BP low warning — Lasix + Losartan + Norvasc can cause hypotension
+  if (data.systolic_bp != null && data.systolic_bp >= 90 && data.systolic_bp < 100) {
+    escalate('yellow', `Blood pressure low at ${data.systolic_bp}/${data.diastolic_bp || '?'}`, 'Rest and avoid standing quickly — his water pill and blood pressure medications can cause low BP. Recheck soon.');
   }
 
+  // Pulse — Larry has AFib, baseline ~90 bpm from ILR
   if (data.pulse_bpm != null) {
-    if (data.pulse_bpm < 50) {
-      escalate('yellow', `Pulse is low at ${data.pulse_bpm} bpm`, 'Monitor closely and contact doctor if symptoms appear');
-    }
-    if (data.pulse_bpm > 110) {
-      escalate('yellow', `Pulse is elevated at ${data.pulse_bpm} bpm`, 'Monitor closely and contact doctor if symptoms appear');
+    if (data.pulse_bpm > 130) {
+      // Rapid AFib
+      escalate('yellow', `Pulse is fast at ${data.pulse_bpm} bpm`, 'This may be rapid atrial fibrillation — contact doctor if this persists or if he feels unwell');
+    } else if (data.pulse_bpm > 110) {
+      escalate('yellow', `Pulse is elevated at ${data.pulse_bpm} bpm`, 'Monitor closely — his heart rate is higher than his usual range. Contact doctor if symptoms appear.');
+    } else if (data.pulse_bpm < 50) {
+      // Bradycardia — Metoprolol effect
+      escalate('yellow', `Pulse is low at ${data.pulse_bpm} bpm`, 'Monitor closely — his heart rate medication (Metoprolol) can slow the heart. Contact doctor if he feels faint or dizzy.');
     }
   }
 
   if (data.poor_appetite && data.poor_sleep) {
-    escalate('yellow', 'Both poor appetite and poor sleep reported', 'These together can indicate worsening heart failure — mention to doctor');
+    escalate('yellow', 'Both poor appetite and poor sleep reported', 'These together can indicate worsening heart failure — mention to doctor at next visit');
   } else if (data.poor_appetite) {
-    escalate('yellow', 'Poor appetite reported', 'Try small, frequent meals');
+    escalate('yellow', 'Poor appetite reported', 'Try small, frequent meals — poor appetite can be a sign of fluid buildup around the stomach');
   } else if (data.poor_sleep) {
-    escalate('yellow', 'Poor sleep reported', 'Monitor — difficulty sleeping flat can be a CHF symptom');
+    escalate('yellow', 'Poor sleep reported', 'Difficulty sleeping flat (needing extra pillows) is a key CHF warning sign — mention to doctor');
   }
 
   // === GREEN (all clear) ===
   if (severity === 'green') {
     messages.push('All readings look stable today');
-    recommendations.push('Keep up the good work with daily monitoring');
+    recommendations.push('Keep up the good work with daily monitoring — consistency is key for managing heart failure');
   }
 
   return { severity, messages, recommendations };
